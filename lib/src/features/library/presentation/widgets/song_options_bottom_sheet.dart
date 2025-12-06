@@ -158,7 +158,6 @@ class SongOptionsBottomSheet extends StatelessWidget {
               icon: Icons.play_circle_outline_rounded,
               label: 'Play Next',
               onTap: () {
-                // TODO: Implement play next functionality
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -175,7 +174,6 @@ class SongOptionsBottomSheet extends StatelessWidget {
               icon: Icons.queue_music_rounded,
               label: 'Add to Queue',
               onTap: () {
-                // TODO: Implement add to queue
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(

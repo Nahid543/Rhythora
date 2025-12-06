@@ -11,7 +11,6 @@ class Song {
   /// For real songs on device
   final String? filePath;
 
-  /// ✅ ADD: Album artwork path for notification/lock screen
   final String? albumArtPath;
 
   const Song({
@@ -22,12 +21,11 @@ class Song {
     required this.album,
     this.audioAsset,
     this.filePath,
-    this.albumArtPath, // ✅ ADD this parameter
+    this.albumArtPath,
   });
 
   bool get isLocalFile => filePath != null;
 
-  // ✅ UPDATED: Include albumArtPath in JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -37,11 +35,10 @@ class Song {
       'album': album,
       'audioAsset': audioAsset,
       'filePath': filePath,
-      'albumArtPath': albumArtPath, // ✅ ADD this
+      'albumArtPath': albumArtPath,
     };
   }
 
-  // ✅ UPDATED: Parse albumArtPath from JSON
   factory Song.fromJson(Map<String, dynamic> json) {
     return Song(
       id: json['id'] as String,
@@ -51,7 +48,7 @@ class Song {
       album: json['album'] as String,
       audioAsset: json['audioAsset'] as String?,
       filePath: json['filePath'] as String?,
-      albumArtPath: json['albumArtPath'] as String?, // ✅ ADD this
+      albumArtPath: json['albumArtPath'] as String?,
     );
   }
 

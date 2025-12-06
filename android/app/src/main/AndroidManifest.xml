@@ -10,7 +10,6 @@
         android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
-    <!-- ✅ ADD: Background audio permissions -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
@@ -21,7 +20,6 @@
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true">
 
-        <!-- ✅ CHANGED: Use AudioServiceActivity instead of MainActivity -->
         <activity
             android:name="com.ryanheise.audioservice.AudioServiceActivity"
             android:exported="true"
@@ -42,7 +40,6 @@
             </intent-filter>
         </activity>
 
-        <!-- ✅ ADD: Audio Service for background playback -->
         <service
             android:name="com.ryanheise.audioservice.AudioService"
             android:foregroundServiceType="mediaPlayback"
@@ -53,7 +50,6 @@
             </intent-filter>
         </service>
 
-        <!-- ✅ ADD: Media button receiver (headphone/bluetooth controls) -->
         <receiver
             android:name="com.ryanheise.audioservice.MediaButtonReceiver"
             android:exported="true"

@@ -36,7 +36,6 @@ class _PlaylistsTabState extends State<PlaylistsTab>
     return ValueListenableBuilder<List<Playlist>>(
       valueListenable: _repo.playlistsNotifier,
       builder: (context, playlists, _) {
-        // Add Favorites as virtual playlist at top
         final favoritesPlaylist = _repo.getFavoritesAsPlaylist();
         final allPlaylists = [favoritesPlaylist, ...playlists];
 

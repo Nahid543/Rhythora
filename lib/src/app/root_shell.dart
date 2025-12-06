@@ -77,7 +77,6 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
 
       case AppLifecycleState.resumed:
         debugPrint('📱 App resumed (was playing: $_wasPlayingBeforeBackground)');
-        // ← CRITICAL: DON'T auto-play!
         break;
 
       case AppLifecycleState.inactive:
@@ -164,7 +163,6 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
           _currentSongIndex = songIndex;
         });
 
-        // ← CRITICAL: Pass autoPlay = false and isRestoring = true
         await _player.setSong(
           song,
           queue: queue,
@@ -269,7 +267,6 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     );
   }
 
-  // ← UPDATED: New optimized queue sheet
   void _openQueueSheet() {
     if (_queue.isEmpty) {
       debugPrint('⚠️ Queue is empty');

@@ -274,7 +274,6 @@ class _ControlButtonState extends State<_ControlButton>
       },
     );
 
-    // Add tooltip for accessibility
     if (widget.tooltip != null) {
       return Tooltip(message: widget.tooltip!, child: button);
     }

@@ -84,8 +84,6 @@ class NowPlayingActionsSheet extends StatelessWidget {
             const SizedBox(height: 16),
 
             const Divider(height: 1),
-
-            // Add to Playlist (TOP PRIORITY)
             ValueListenableBuilder<List<Playlist>>(
               valueListenable: repo.playlistsNotifier,
               builder: (context, playlists, _) {
@@ -526,8 +524,6 @@ class NowPlayingActionsSheet extends StatelessWidget {
       final s = (d.inSeconds % 60).toString().padLeft(2, '0');
       return '$m:$s';
     }
-
-    // ← FIXED: Better artist handling
     String getArtist() {
       if (song.artist.isEmpty || song.artist == '<unknown>') {
         return 'Unknown Artist';

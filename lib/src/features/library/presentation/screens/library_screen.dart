@@ -33,7 +33,6 @@ class _LibraryScreenState extends State<LibraryScreen>
   final PlaylistRepository _playlistRepo = PlaylistRepository.instance;
   late TabController _tabController;
 
-  // TODO: Load from SharedPreferences in settings
   bool _useModernView = true; // true = tabs, false = classic list
 
   SortType currentSort = SortType.title; // Shared across tabs

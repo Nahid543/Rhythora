@@ -585,9 +585,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
       ],
     );
   }
-
-  // ✅ FIXED: Layout that handles long text
-
   Widget _buildContent(
     Song song,
     ColorScheme colorScheme,

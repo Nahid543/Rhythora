@@ -90,7 +90,7 @@ class _ExportDialogState extends State<ExportDialog> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Export failed: ${e.toString()}', // ✅ FIXED - properly shows error
+                    'Export failed: ${e.toString()}',
                     style: const TextStyle(color: Colors.white),
                   ),
                 ),

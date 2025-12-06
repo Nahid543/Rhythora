@@ -10,7 +10,7 @@ import '../library_view_toggle.dart';
 import '../library_stats_header.dart';
 import '../song_list_item.dart';
 import '../song_grid_item.dart';
-import '../song_options_bottom_sheet.dart'; // ← NEW IMPORT
+import '../song_options_bottom_sheet.dart';
 
 class SongsTab extends StatefulWidget {
   final List<Song> songs;
@@ -111,7 +111,6 @@ class _SongsTabState extends State<SongsTab>
     return filtered;
   }
 
-  // ← NEW METHOD: Show song options bottom sheet
   void _showSongOptions(Song song) {
     showModalBottomSheet(
       context: context,
@@ -241,7 +240,7 @@ class _SongsTabState extends State<SongsTab>
                 child: SongListItem(
                   song: song,
                   onTap: () => widget.onSongSelected(song, allSongs, queueIndex),
-                  onLongPress: () => _showSongOptions(song), // ← ADDED
+                  onLongPress: () => _showSongOptions(song),
                   colorScheme: colorScheme,
                   textTheme: textTheme,
                   index: index,
@@ -288,7 +287,7 @@ class _SongsTabState extends State<SongsTab>
                 child: SongGridItem(
                   song: song,
                   onTap: () => widget.onSongSelected(song, allSongs, queueIndex),
-                  onLongPress: () => _showSongOptions(song), // ← ADDED
+                  onLongPress: () => _showSongOptions(song),
                   colorScheme: colorScheme,
                   textTheme: textTheme,
                 ),

@@ -29,7 +29,6 @@ class AudioPlayerManager {
   bool _isManualSeek = false;
   bool _isRestoringState = false;
 
-  // ✨ ADD THIS: Track current playing song for stats
   String? _currentTrackingSongId;
 
   // State notifiers
@@ -75,7 +74,6 @@ class AudioPlayerManager {
     _player.playingStream.listen((playing) async {
       isPlaying.value = playing;
 
-      // ✨ ADD THIS: Handle pause/resume tracking
       if (!playing && _currentTrackingSongId != null) {
         // User paused - pause tracking
         await listeningStatsService.pauseListening();
@@ -138,7 +136,6 @@ class AudioPlayerManager {
       debugPrint('📊 Processing state: \$state');
 
       if (state == ProcessingState.completed) {
-        // ✨ ADD THIS: Stop tracking when song/queue completes
         if (_currentTrackingSongId != null) {
           await listeningStatsService.stopListening();
           _currentTrackingSongId = null;
@@ -158,7 +155,6 @@ class AudioPlayerManager {
       (event) {},
       onError: (Object e, StackTrace st) async {
         debugPrint('❌ Player error: \$e');
-        // ✨ ADD THIS: Stop tracking on error
         if (_currentTrackingSongId != null) {
           await listeningStatsService.stopListening();
           _currentTrackingSongId = null;
@@ -206,7 +202,6 @@ class AudioPlayerManager {
     }
   }
 
-  // ✨ MODIFIED: Handle song changes with stats tracking
   Future<void> _handleSongChange(int index) async {
     if (_currentQueue == null || index < 0 || index >= _currentQueue!.length) {
       debugPrint(
@@ -218,7 +213,6 @@ class AudioPlayerManager {
     final newSong = _currentQueue![index];
 
     if (currentSong.value?.id != newSong.id) {
-      // ✨ ADD THIS: Stop tracking previous song
       if (_currentTrackingSongId != null &&
           _currentTrackingSongId != newSong.id) {
         await listeningStatsService.stopListening();
@@ -228,7 +222,6 @@ class AudioPlayerManager {
       currentSong.value = newSong;
       currentIndex.value = index;
 
-      // ✨ ADD THIS: Start tracking new song (if playing)
       if (isPlaying.value && !_isRestoringState) {
         _currentTrackingSongId = newSong.id;
         await listeningStatsService.startListening(newSong.id);
@@ -270,7 +263,6 @@ class AudioPlayerManager {
     try {
       _isRestoringState = isRestoring;
 
-      // ✨ ADD THIS: Stop tracking when setting new queue
       if (_currentTrackingSongId != null && !isRestoring) {
         await listeningStatsService.stopListening();
         _currentTrackingSongId = null;
@@ -365,7 +357,6 @@ class AudioPlayerManager {
     );
   }
 
-  // ✨ MODIFIED: Start tracking when playing
   Future<void> play() async {
     try {
       if (_player.audioSource == null) {
@@ -375,7 +366,6 @@ class AudioPlayerManager {
 
       await _player.play();
 
-      // ✨ ADD THIS: Start tracking current song
       if (currentSong.value != null &&
           _currentTrackingSongId != currentSong.value!.id) {
         _currentTrackingSongId = currentSong.value!.id;
@@ -393,12 +383,10 @@ class AudioPlayerManager {
     }
   }
 
-  // ✨ MODIFIED: Pause tracking when pausing
   Future<void> pause() async {
     try {
       await _player.pause();
 
-      // ✨ ADD THIS: Pause tracking
       if (_currentTrackingSongId != null) {
         await listeningStatsService.pauseListening();
         debugPrint('⏸️ Stats: Paused tracking');
@@ -410,12 +398,10 @@ class AudioPlayerManager {
     }
   }
 
-  // ✨ MODIFIED: Stop tracking when stopping
   Future<void> stop() async {
     try {
       await _player.stop();
 
-      // ✨ ADD THIS: Stop tracking
       if (_currentTrackingSongId != null) {
         await listeningStatsService.stopListening();
         _currentTrackingSongId = null;
@@ -436,7 +422,6 @@ class AudioPlayerManager {
     }
   }
 
-  // ✨ MODIFIED: Handle tracking on skip
   Future<void> skipToNext() async {
     try {
       if (!_player.hasNext) {
@@ -444,7 +429,6 @@ class AudioPlayerManager {
         return;
       }
 
-      // ✨ ADD THIS: Stop tracking current song before skip
       if (_currentTrackingSongId != null) {
         await listeningStatsService.stopListening();
         debugPrint('⏹️ Stats: Stopped tracking (skipping to next)');
@@ -466,7 +450,6 @@ class AudioPlayerManager {
     }
   }
 
-  // ✨ MODIFIED: Handle tracking on skip to previous
   Future<void> skipToPrevious() async {
     try {
       if (_player.position.inSeconds > 3) {
@@ -480,7 +463,6 @@ class AudioPlayerManager {
         return;
       }
 
-      // ✨ ADD THIS: Stop tracking current song before skip
       if (_currentTrackingSongId != null) {
         await listeningStatsService.stopListening();
         debugPrint('⏹️ Stats: Stopped tracking (skipping to previous)');
@@ -536,9 +518,7 @@ class AudioPlayerManager {
   List<Song>? get currentQueue => _currentQueue;
   Song? get getCurrentSong => currentSong.value;
 
-  // ✨ MODIFIED: Clean up tracking on dispose
   Future<void> dispose() async {
-    // ✨ ADD THIS: Stop tracking before disposing
     if (_currentTrackingSongId != null) {
       await listeningStatsService.stopListening();
       _currentTrackingSongId = null;

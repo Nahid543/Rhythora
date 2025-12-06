@@ -7,9 +7,6 @@ import 'dart:ui';
 import '../../../library/domain/entities/song.dart';
 import '../../data/audio_player_manager.dart';
 
-/// ← FIXED: Now listens directly to AudioPlayerManager
-/// This ensures mini player ALWAYS shows the correct currently playing song,
-/// regardless of which screen you're on or how you navigate.
 class MiniPlayerBar extends StatefulWidget {
   final VoidCallback onTap;
 
@@ -55,7 +52,6 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
       curve: Curves.easeIn,
     ));
 
-    // ← NEW: Listen to player state changes
     _player.currentSong.addListener(_onSongChanged);
     
     // Show immediately if there's a song

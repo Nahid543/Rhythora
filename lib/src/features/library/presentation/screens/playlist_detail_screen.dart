@@ -404,7 +404,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
               onPressed: songs.isEmpty
                   ? null
                   : () {
-                      // TODO: Implement shuffle
                       widget.onSongSelected(songs.first, songs, 0);
                     },
               icon: const Icon(Icons.shuffle_rounded),
@@ -418,8 +417,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
             ),
           ),
           const SizedBox(width: 12),
-
-          // Add Songs Button
           if (!widget.playlist.isSystemPlaylist)
             IconButton.filledTonal(
               onPressed: () => _showAddSongsSheet(),

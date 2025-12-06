@@ -194,7 +194,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (confirmed == true && mounted) {
-      // TODO: Implement cache clearing logic
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Row(
