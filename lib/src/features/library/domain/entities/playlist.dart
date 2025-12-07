@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 
 @immutable
@@ -35,22 +34,22 @@ class Playlist {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'songIds': songIds,
-        'createdAt': createdAt.toIso8601String(),
-        'lastModified': lastModified.toIso8601String(),
-        'isSystemPlaylist': isSystemPlaylist,
-      };
+    'id': id,
+    'name': name,
+    'songIds': songIds,
+    'createdAt': createdAt.toIso8601String(),
+    'lastModified': lastModified.toIso8601String(),
+    'isSystemPlaylist': isSystemPlaylist,
+  };
 
   factory Playlist.fromJson(Map<String, dynamic> json) => Playlist(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        songIds: List<String>.from(json['songIds'] as List),
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        lastModified: DateTime.parse(json['lastModified'] as String),
-        isSystemPlaylist: json['isSystemPlaylist'] as bool? ?? false,
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    songIds: List<String>.from(json['songIds'] as List),
+    createdAt: DateTime.parse(json['createdAt'] as String),
+    lastModified: DateTime.parse(json['lastModified'] as String),
+    isSystemPlaylist: json['isSystemPlaylist'] as bool? ?? false,
+  );
 
   int get songCount => songIds.length;
   bool get isEmpty => songIds.isEmpty;

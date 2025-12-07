@@ -1,12 +1,16 @@
-
 import 'package:flutter/material.dart';
 
 import '../../data/local_music_loader.dart';
 import '../../data/playlist_repository.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/music_folder.dart';
+import '../../domain/models/library_source_settings.dart';
+import '../../domain/models/library_source_service.dart';
 import '../widgets/tabs/songs_tab.dart';
 import '../widgets/tabs/playlists_tab.dart';
 import '../widgets/tabs/favorites_tab.dart';
+import '../widgets/library_filter_bar.dart';
+import './manage_music_folders_screen.dart';
 
 enum SortType { title, artist, duration, dateAdded }
 
@@ -26,22 +30,25 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen>
     with SingleTickerProviderStateMixin {
-  late Future<List<Song>> _songsFuture;
-  List<Song> _allSongs = [];
-
-  final PlaylistRepository _playlistRepo = PlaylistRepository.instance;
   late TabController _tabController;
+  final PlaylistRepository _playlistRepo = PlaylistRepository.instance;
 
   bool _useModernView = true;
-
   SortType currentSort = SortType.title;
+  
+  LibrarySourceSettings? _librarySourceSettings;
+  List<MusicFolder> _availableFolders = [];
+  List<Song> _currentSongs = [];
+  
+  bool _isInitializing = true;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
-    _songsFuture = _loadSongs();
     _tabController = TabController(length: 3, vsync: this);
     _playlistRepo.initialize();
+    _initializeLibrary();
   }
 
   @override
@@ -50,18 +57,117 @@ class _LibraryScreenState extends State<LibraryScreen>
     super.dispose();
   }
 
-  Future<List<Song>> _loadSongs() async {
-    final songs = await LocalMusicLoader.instance.loadSongs();
-    _allSongs = songs;
-    widget.onSongsLoaded?.call(songs);
-    return songs;
+  Future<void> _initializeLibrary() async {
+    try {
+      // Load saved settings FIRST
+      final savedSettings = await LibrarySourceService.load();
+      
+      // Load folders in parallel
+      final folders = await LocalMusicLoader.instance.loadAvailableFolders();
+      
+      // Load songs with saved settings
+      final songs = await LocalMusicLoader.instance.loadSongs(
+        forceRefresh: true,
+        sourceSettings: savedSettings,
+      );
+
+      if (mounted) {
+        setState(() {
+          _librarySourceSettings = savedSettings;
+          _availableFolders = folders;
+          _currentSongs = songs;
+          _isInitializing = false;
+        });
+        
+        widget.onSongsLoaded?.call(songs);
+        
+        // Debug: Show what was restored
+        if (savedSettings.isAllMusic) {
+          debugPrint('✅ Restored: All Music mode');
+        } else {
+          debugPrint('✅ Restored: ${savedSettings.folderPaths.length} folder(s) selected');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error initializing library: $e');
+      if (mounted) {
+        setState(() {
+          _librarySourceSettings = const LibrarySourceSettings();
+          _isInitializing = false;
+        });
+      }
+    }
   }
 
   Future<void> _handleRefresh() async {
+    if (_isRefreshing) return;
+    
+    setState(() => _isRefreshing = true);
+    
+    try {
+      final songs = await LocalMusicLoader.instance.loadSongs(
+        forceRefresh: true,
+        sourceSettings: _librarySourceSettings,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _currentSongs = songs;
+          _isRefreshing = false;
+        });
+        widget.onSongsLoaded?.call(songs);
+      }
+    } catch (e) {
+      debugPrint('❌ Error refreshing: $e');
+      if (mounted) {
+        setState(() => _isRefreshing = false);
+      }
+    }
+  }
+
+  Future<void> _handleFilterChange(LibrarySourceSettings newSettings) async {
+    // Save immediately
+    await LibrarySourceService.save(newSettings);
+    
     setState(() {
-      _songsFuture = _loadSongs();
+      _librarySourceSettings = newSettings;
+      _isRefreshing = true;
     });
-    await _songsFuture;
+
+    // Reload songs with new filter
+    final songs = await LocalMusicLoader.instance.loadSongs(
+      forceRefresh: true,
+      sourceSettings: newSettings,
+    );
+
+    if (mounted) {
+      setState(() {
+        _currentSongs = songs;
+        _isRefreshing = false;
+      });
+      widget.onSongsLoaded?.call(songs);
+    }
+  }
+
+  Future<void> _openManageFolders() async {
+    final result = await Navigator.push<LibrarySourceSettings>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ManageMusicFoldersScreen(
+          currentSettings: _librarySourceSettings ?? const LibrarySourceSettings(),
+        ),
+      ),
+    );
+
+    if (result != null) {
+      await _handleFilterChange(result);
+      
+      // Reload folders list
+      final folders = await LocalMusicLoader.instance.loadAvailableFolders();
+      if (mounted) {
+        setState(() => _availableFolders = folders);
+      }
+    }
   }
 
   void _showSortMenu() {
@@ -149,53 +255,95 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
   }
 
+  String _currentSourceLabel() {
+    if (_librarySourceSettings == null) return 'Loading...';
+    
+    if (_librarySourceSettings!.isAllMusic || 
+        _librarySourceSettings!.folderPaths.isEmpty) {
+      return 'All music on this device';
+    }
+
+    final count = _librarySourceSettings!.selectedFolderCount;
+    return count == 1 ? '1 folder selected' : '$count folders selected';
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      appBar: _buildAppBar(colorScheme, textTheme),
-      body: FutureBuilder<List<Song>>(
-        future: _songsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildLoadingState(colorScheme, textTheme);
-          }
-
-          if (snapshot.hasError) {
-            return _buildErrorState(colorScheme, textTheme);
-          }
-
-          final songs = snapshot.data ?? [];
-
-          if (songs.isEmpty) {
-            return _buildEmptyState(colorScheme, textTheme);
-          }
-
-          return TabBarView(
-            controller: _tabController,
+    if (_isInitializing) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Library'),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SongsTab(
-                songs: songs,
-                currentSort: currentSort,
-                onSongSelected: widget.onSongSelected,
-                onRefresh: _handleRefresh,
-              ),
-
-              PlaylistsTab(
-                allSongs: songs,
-                onSongSelected: widget.onSongSelected,
-              ),
-
-              FavoritesTab(
-                allSongs: songs,
-                onSongSelected: widget.onSongSelected,
+              CircularProgressIndicator(color: colorScheme.primary),
+              const SizedBox(height: 16),
+              Text(
+                'Loading your library...',
+                style: textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.7),
+                ),
               ),
             ],
-          );
-        },
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: _buildAppBar(colorScheme, textTheme),
+      body: Column(
+        children: [
+          if (_availableFolders.isNotEmpty && _librarySourceSettings != null)
+            LibraryFilterBar(
+              currentSettings: _librarySourceSettings!,
+              availableFolders: _availableFolders,
+              onSettingsChanged: _handleFilterChange,
+              onManageFolders: _openManageFolders,
+            ),
+
+          Expanded(
+            child: _isRefreshing
+                ? Center(
+                    child: CircularProgressIndicator(
+                      color: colorScheme.primary,
+                    ),
+                  )
+                : _buildContent(),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_currentSongs.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return TabBarView(
+      controller: _tabController,
+      children: [
+        SongsTab(
+          songs: _currentSongs,
+          currentSort: currentSort,
+          onSongSelected: widget.onSongSelected,
+          onRefresh: _handleRefresh,
+        ),
+        PlaylistsTab(
+          allSongs: _currentSongs,
+          onSongSelected: widget.onSongSelected,
+        ),
+        FavoritesTab(
+          allSongs: _currentSongs,
+          onSongSelected: widget.onSongSelected,
+        ),
+      ],
     );
   }
 
@@ -204,15 +352,31 @@ class _LibraryScreenState extends State<LibraryScreen>
     TextTheme textTheme,
   ) {
     return AppBar(
-      title: Row(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.library_music_rounded, color: colorScheme.primary),
-          const SizedBox(width: 12),
-          Text(
-            'Library',
-            style: textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
+          Row(
+            children: [
+              Icon(Icons.library_music_rounded, color: colorScheme.primary),
+              const SizedBox(width: 12),
+              Text(
+                'Library',
+                style: textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: Text(
+              _currentSourceLabel(),
+              key: ValueKey(_currentSourceLabel()),
+              style: textTheme.labelSmall?.copyWith(
+                color: colorScheme.onSurface.withOpacity(0.7),
+              ),
             ),
           ),
         ],
@@ -250,54 +414,13 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
   }
 
-  Widget _buildLoadingState(ColorScheme colorScheme, TextTheme textTheme) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(color: colorScheme.primary),
-          const SizedBox(height: 16),
-          Text(
-            'Loading your music...',
-            style: textTheme.bodyLarge?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.7),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildEmptyState() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    
+    final isFiltered = _librarySourceSettings?.isAllMusic == false &&
+        _librarySourceSettings!.hasSelectedFolders;
 
-  Widget _buildErrorState(ColorScheme colorScheme, TextTheme textTheme) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline_rounded,
-            size: 64,
-            color: colorScheme.error,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Error loading songs',
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Please try again',
-            style: textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.7),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(ColorScheme colorScheme, TextTheme textTheme) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -316,11 +439,24 @@ class _LibraryScreenState extends State<LibraryScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Add music to your device',
+            isFiltered
+                ? 'No songs in selected folders'
+                : 'Add music to your device',
             style: textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurface.withOpacity(0.7),
             ),
           ),
+          if (isFiltered) ...[
+            const SizedBox(height: 24),
+            FilledButton.tonal(
+              onPressed: () async {
+                await _handleFilterChange(
+                  const LibrarySourceSettings(),
+                );
+              },
+              child: const Text('Show All Music'),
+            ),
+          ],
         ],
       ),
     );

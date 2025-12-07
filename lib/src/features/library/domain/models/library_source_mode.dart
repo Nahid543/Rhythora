@@ -1,0 +1,4 @@
+enum LibrarySourceMode {
+  allMusic,
+  selectedFolders,
+}

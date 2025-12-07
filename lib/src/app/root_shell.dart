@@ -1,11 +1,9 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
-// ignore: unused_import
-import '../core/theme/app_colors.dart';
+import '../core/services/battery_saver_service.dart';
 import '../core/widgets/animated_nav_bar.dart';
 import '../features/home/presentation/screens/home_screen.dart';
 import '../features/library/presentation/screens/library_screen.dart';
@@ -13,7 +11,7 @@ import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/library/domain/entities/song.dart';
 import '../features/playback/presentation/screens/now_playing_screen.dart';
 import '../features/playback/presentation/widgets/mini_player_bar.dart';
-import '../features/playback/presentation/widgets/queue_sheet.dart'; 
+import '../features/playback/presentation/widgets/queue_sheet.dart';
 import '../features/playback/data/audio_player_manager.dart';
 
 class RootShell extends StatefulWidget {
@@ -25,6 +23,7 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   int _currentIndex = 0;
+  bool _isLoadingDefaultScreen = true;
 
   List<Song> _queue = const [];
   int _currentSongIndex = -1;
@@ -44,7 +43,9 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
 
     _player.currentSong.addListener(_onPlayerSongChanged);
+    BatterySaverService.instance.addListener(_onBatterySaverChanged);
 
+    _loadDefaultScreen();
     _loadPersistedState();
   }
 
@@ -52,7 +53,37 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _player.currentSong.removeListener(_onPlayerSongChanged);
+    BatterySaverService.instance.removeListener(_onBatterySaverChanged);
     super.dispose();
+  }
+
+  void _onBatterySaverChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _loadDefaultScreen() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final defaultScreen = prefs.getString('default_screen') ?? 'home';
+
+      if (!mounted) return;
+
+      setState(() {
+        _currentIndex = defaultScreen == 'library' ? 1 : 0;
+        _isLoadingDefaultScreen = false;
+      });
+
+      debugPrint('✅ Default screen loaded: $defaultScreen (index: $_currentIndex)');
+    } catch (e) {
+      debugPrint('⚠️ Error loading default screen: $e');
+      if (!mounted) return;
+      setState(() {
+        _currentIndex = 0;
+        _isLoadingDefaultScreen = false;
+      });
+    }
   }
 
   void _onPlayerSongChanged() {
@@ -68,26 +99,17 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
 
     switch (state) {
       case AppLifecycleState.paused:
-        debugPrint('📱 App paused');
         _wasPlayingBeforeBackground = _player.isPlaying.value;
         _saveState();
         break;
-
       case AppLifecycleState.resumed:
-        debugPrint('📱 App resumed (was playing: $_wasPlayingBeforeBackground)');
         break;
-
       case AppLifecycleState.inactive:
-        debugPrint('📱 App inactive');
         break;
-
       case AppLifecycleState.detached:
-        debugPrint('📱 App detached - saving (playback keeps running)');
         _saveState();
         break;
-
       case AppLifecycleState.hidden:
-        debugPrint('📱 App hidden');
         break;
     }
   }
@@ -207,8 +229,6 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
       _currentSongIndex = index;
       _shuffledIndices = [];
     });
-
-    debugPrint('▶️ Playing: ${song.title} (index: $index)');
 
     _player.setSong(
       song,
@@ -382,6 +402,20 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    if (_isLoadingDefaultScreen) {
+      return Scaffold(
+        backgroundColor: colorScheme.surface,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: colorScheme.primary,
+          ),
+        ),
+      );
+    }
+
+    final batterySaver = BatterySaverService.instance;
+    final showBatteryChip = batterySaver.isEnabled;
+
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) async {
@@ -397,6 +431,42 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
         body: SafeArea(
           child: Column(
             children: [
+              if (showBatteryChip)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.battery_saver,
+                            size: 16,
+                            color: colorScheme.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Battery saver',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               Expanded(child: _buildCurrentTab()),
               MiniPlayerBar(onTap: _openNowPlaying),
             ],
