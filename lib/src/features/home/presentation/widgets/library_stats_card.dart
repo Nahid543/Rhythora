@@ -110,7 +110,6 @@ class _LibraryStatsCardState extends State<LibraryStatsCard>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               children: [
                 Container(
@@ -177,10 +176,8 @@ class _LibraryStatsCardState extends State<LibraryStatsCard>
             ),
             const SizedBox(height: 20),
 
-            // Stats Grid
             Row(
               children: [
-                // Listening Time
                 Expanded(
                   child: _ModernStatItem(
                     icon: Icons.access_time_rounded,
@@ -197,7 +194,6 @@ class _LibraryStatsCardState extends State<LibraryStatsCard>
                 ),
                 SizedBox(width: widget.isTablet ? 16 : 12),
 
-                // Unique Songs
                 Expanded(
                   child: _ModernStatItem(
                     icon: Icons.queue_music_rounded,
@@ -216,7 +212,6 @@ class _LibraryStatsCardState extends State<LibraryStatsCard>
             ),
             const SizedBox(height: 16),
 
-            // Total Library Info
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(

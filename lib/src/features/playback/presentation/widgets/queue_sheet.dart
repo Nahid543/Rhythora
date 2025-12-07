@@ -1,4 +1,3 @@
-// lib/src/features/playback/presentation/widgets/queue_sheet.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -51,7 +50,6 @@ class _QueueSheetState extends State<QueueSheet>
 
     _fadeController.forward();
 
-    // Auto-scroll to current song after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToCurrentSong();
     });
@@ -60,16 +58,13 @@ class _QueueSheetState extends State<QueueSheet>
   void _scrollToCurrentSong() {
     if (_hasScrolled || !mounted) return;
 
-    // Avoid accessing the scroll position before the controller is attached.
     if (!_scrollController.hasClients) return;
 
     final currentIndex = _player.currentIndex.value;
     if (currentIndex >= 0 && currentIndex < widget.queue.length) {
-      // Calculate item height (approximately)
-      const itemHeight = 72.0; // ListTile height
+      const itemHeight = 72.0;
       final targetPosition = currentIndex * itemHeight;
       
-      // Center the current song in view
       final screenHeight = MediaQuery.of(context).size.height * 0.7;
       final offset = (targetPosition - screenHeight / 2 + itemHeight / 2).clamp(
         0.0,
@@ -118,7 +113,6 @@ class _QueueSheetState extends State<QueueSheet>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Drag Handle
             const SizedBox(height: 12),
             Container(
               width: 40,
@@ -131,12 +125,10 @@ class _QueueSheetState extends State<QueueSheet>
             
             const SizedBox(height: 16),
 
-            // Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  // Icon
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
@@ -163,7 +155,6 @@ class _QueueSheetState extends State<QueueSheet>
                   ),
                   const Spacer(),
                   
-                  // Song count badge
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -189,7 +180,6 @@ class _QueueSheetState extends State<QueueSheet>
             Divider(height: 1, color: colorScheme.outlineVariant.withOpacity(0.5)),
             const SizedBox(height: 8),
 
-            // Queue List
             Expanded(
               child: FadeTransition(
                 opacity: _fadeAnimation,
@@ -232,7 +222,6 @@ class _QueueSheetState extends State<QueueSheet>
   }
 }
 
-// Queue Item Widget
 class _QueueItem extends StatefulWidget {
   final Song song;
   final int index;
@@ -320,7 +309,6 @@ class _QueueItemState extends State<_QueueItem>
                   ),
                   child: Row(
                     children: [
-                      // Index or Playing Indicator
                       SizedBox(
                         width: 32,
                         child: widget.isCurrent
@@ -342,7 +330,6 @@ class _QueueItemState extends State<_QueueItem>
 
                       const SizedBox(width: 16),
 
-                      // Song Info
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,7 +410,6 @@ class _QueueItemState extends State<_QueueItem>
 
                       const SizedBox(width: 12),
 
-                      // Duration
                       Text(
                         _formatDuration(widget.song.duration),
                         style: widget.textTheme.bodySmall?.copyWith(
@@ -452,7 +438,6 @@ class _QueueItemState extends State<_QueueItem>
   }
 }
 
-// Animated Playing Indicator
 class _PlayingIndicator extends StatefulWidget {
   final ColorScheme colorScheme;
 

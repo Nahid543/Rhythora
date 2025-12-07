@@ -1,4 +1,3 @@
-// lib/src/features/playback/presentation/widgets/playback_controls.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -31,7 +30,6 @@ class PlaybackControls extends StatelessWidget {
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Shuffle
             ValueListenableBuilder<bool>(
               valueListenable: player.isShuffleEnabled,
               builder: (context, isShuffleEnabled, __) {
@@ -51,7 +49,6 @@ class PlaybackControls extends StatelessWidget {
 
             SizedBox(width: isTablet ? 20 : 16),
 
-            // Previous
             _ControlButton(
               icon: Icons.skip_previous_rounded,
               size: isTablet ? 44 : 40,
@@ -68,7 +65,6 @@ class PlaybackControls extends StatelessWidget {
 
             SizedBox(width: isTablet ? 24 : 20),
 
-            // Play/Pause (Main button)
             _PlayPauseButton(
               isPlaying: isPlaying,
               onPressed: () {
@@ -85,7 +81,6 @@ class PlaybackControls extends StatelessWidget {
 
             SizedBox(width: isTablet ? 24 : 20),
 
-            // Next
             _ControlButton(
               icon: Icons.skip_next_rounded,
               size: isTablet ? 44 : 40,
@@ -102,7 +97,6 @@ class PlaybackControls extends StatelessWidget {
 
             SizedBox(width: isTablet ? 20 : 16),
 
-            // Repeat
             ValueListenableBuilder<RepeatMode>(
               valueListenable: player.repeatMode,
               builder: (context, repeatMode, _) {
@@ -149,7 +143,6 @@ class PlaybackControls extends StatelessWidget {
   }
 }
 
-// Control Button
 class _ControlButton extends StatefulWidget {
   final IconData icon;
   final bool isActive;
@@ -282,7 +275,6 @@ class _ControlButtonState extends State<_ControlButton>
   }
 }
 
-// Enhanced Play/Pause Button
 class _PlayPauseButton extends StatefulWidget {
   final bool isPlaying;
   final VoidCallback onPressed;

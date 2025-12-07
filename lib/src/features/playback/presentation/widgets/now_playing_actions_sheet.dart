@@ -1,4 +1,3 @@
-// lib/src/features/playback/presentation/widgets/now_playing_actions_sheet.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -49,7 +48,6 @@ class NowPlayingActionsSheet extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -105,7 +103,6 @@ class NowPlayingActionsSheet extends StatelessWidget {
               },
             ),
 
-            // Song Info
             _ActionTile(
               icon: Icons.info_outline_rounded,
               iconColor: colorScheme.tertiary,
@@ -119,7 +116,6 @@ class NowPlayingActionsSheet extends StatelessWidget {
               textTheme: textTheme,
             ),
 
-            // Share (with description)
             _ActionTile(
               icon: Icons.share_rounded,
               iconColor: colorScheme.secondary,
@@ -193,7 +189,6 @@ class NowPlayingActionsSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Create New Playlist
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Material(
@@ -268,7 +263,6 @@ class NowPlayingActionsSheet extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // Existing Playlists
                 if (playlists.isEmpty)
                   Expanded(
                     child: Center(
@@ -607,7 +601,6 @@ class NowPlayingActionsSheet extends StatelessWidget {
   }
 }
 
-// Action Tile Widget
 class _ActionTile extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
@@ -724,7 +717,6 @@ class _ActionTile extends StatelessWidget {
   }
 }
 
-// Info Row Widget (Enhanced)
 Widget _InfoRow(String label, String value, TextTheme textTheme, ColorScheme colorScheme) {
   return Container(
     padding: const EdgeInsets.all(12),

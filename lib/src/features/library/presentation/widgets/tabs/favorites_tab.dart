@@ -1,4 +1,3 @@
-// lib/src/features/library/presentation/widgets/tabs/favorites_tab.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -47,7 +46,6 @@ class _FavoritesTabState extends State<FavoritesTab>
 
         return Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -67,7 +65,6 @@ class _FavoritesTabState extends State<FavoritesTab>
                       iconSize: 32,
                       color: colorScheme.primary,
                       onPressed: () {
-                        // Play all favorites
                         if (favoriteSongs.isNotEmpty) {
                           widget.onSongSelected(
                             favoriteSongs.first,
@@ -82,7 +79,6 @@ class _FavoritesTabState extends State<FavoritesTab>
               ),
             ),
 
-            // Favorites List
             Expanded(
               child: ListView.builder(
                 physics: const BouncingScrollPhysics(),

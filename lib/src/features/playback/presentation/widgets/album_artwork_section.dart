@@ -111,7 +111,6 @@ class _AlbumArtworkSectionState extends State<AlbumArtworkSection>
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Subtle background glow ONLY
               AnimatedBuilder(
                 animation: _pulseAnimation,
                 builder: (context, child) {
@@ -136,7 +135,6 @@ class _AlbumArtworkSectionState extends State<AlbumArtworkSection>
                 },
               ),
 
-              // Main artwork
               Hero(
                 tag: 'artwork_${widget.song.id}',
                 child: Container(
@@ -181,7 +179,6 @@ class _AlbumArtworkSectionState extends State<AlbumArtworkSection>
   }
 }
 
-// Enhanced No-Artwork Widget
 class _StunningNoArtwork extends StatelessWidget {
   final double size;
   final ColorScheme colorScheme;
@@ -203,7 +200,6 @@ class _StunningNoArtwork extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Animated rotating gradient
         AnimatedBuilder(
           animation: rotateController,
           builder: (context, child) {
@@ -226,7 +222,6 @@ class _StunningNoArtwork extends StatelessWidget {
           },
         ),
 
-        // Animated wave circles (when playing)
         ValueListenableBuilder<bool>(
           valueListenable: isPlaying,
           builder: (context, playing, _) {
@@ -247,7 +242,6 @@ class _StunningNoArtwork extends StatelessWidget {
           },
         ),
 
-        // Subtle overlay
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -262,7 +256,6 @@ class _StunningNoArtwork extends StatelessWidget {
           ),
         ),
 
-        // Pulsing center glow + icon
         Center(
           child: AnimatedBuilder(
             animation: pulseAnimation,
@@ -270,7 +263,6 @@ class _StunningNoArtwork extends StatelessWidget {
               return Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Glowing background
                   Container(
                     width: size * 0.45,
                     height: size * 0.45,
@@ -285,13 +277,11 @@ class _StunningNoArtwork extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Outer icon (glow)
                   Icon(
                     Icons.music_note_rounded,
                     size: size * 0.36,
                     color: Colors.white.withOpacity(0.2),
                   ),
-                  // Main icon
                   Icon(
                     Icons.music_note_rounded,
                     size: size * 0.3,
@@ -314,7 +304,6 @@ class _StunningNoArtwork extends StatelessWidget {
           ),
         ),
 
-        // Floating particles (when playing)
         ValueListenableBuilder<bool>(
           valueListenable: isPlaying,
           builder: (context, playing, _) {
@@ -339,7 +328,6 @@ class _StunningNoArtwork extends StatelessWidget {
   }
 }
 
-// Wave Circles Painter
 class _WaveCirclesPainter extends CustomPainter {
   final double animation;
   final Color color;
@@ -371,7 +359,6 @@ class _WaveCirclesPainter extends CustomPainter {
   }
 }
 
-// Floating Particles Painter
 class _FloatingParticlesPainter extends CustomPainter {
   final double animation;
   final Color color;

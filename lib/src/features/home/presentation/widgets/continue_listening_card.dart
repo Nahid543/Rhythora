@@ -60,7 +60,6 @@ class ContinueListeningCard extends StatelessWidget {
                     padding: const EdgeInsets.all(20),
                     child: Row(
                       children: [
-                        // Album Art
                         Hero(
                           tag: 'current_song_${song.id}',
                           child: Container(

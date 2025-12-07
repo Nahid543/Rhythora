@@ -85,7 +85,6 @@ class ListeningStatsService {
     if (!_isInitialized) return;
     await _ensureFreshDay();
 
-    // Finalize previous session if switching songs mid-play
     if (_currentPlayingSongId != null && _currentPlayingSongId != songId) {
       await _finalizeSession(clearSongId: true);
     }
@@ -133,7 +132,6 @@ class ListeningStatsService {
         ..stop()
         ..reset();
 
-      // Only count sessions longer than 3 seconds to avoid false tracking
       if (elapsed.inSeconds >= 3) {
         _todayListeningTime += elapsed;
       }
@@ -170,7 +168,6 @@ class ListeningStatsService {
     final songsList = _prefs.getStringList(_keyUniqueSongs) ?? [];
     _todayUniqueSongs = Set<String>.from(songsList);
 
-    // Fallback so unique songs aren't lost if we only had legacy data
     if (_todaySongPlays == 0 && _todayUniqueSongs.isNotEmpty) {
       _todaySongPlays = _todayUniqueSongs.length;
     }
@@ -217,7 +214,7 @@ class ListeningStatsService {
   /// Get weekly stats (placeholder for future expansion)
   Future<Map<String, dynamic>> getWeeklyStats() async {
     return {
-      'totalMinutes': getTodayListeningTime().inMinutes * 7, // Example
+      'totalMinutes': getTodayListeningTime().inMinutes * 7,
       'uniqueSongs': _todayUniqueSongs.length,
       'songPlays': _todaySongPlays,
     };

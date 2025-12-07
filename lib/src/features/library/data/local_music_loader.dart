@@ -15,10 +15,9 @@ class LocalMusicLoader {
   final OnAudioQuery _audioQuery = OnAudioQuery();
 
   Future<bool> _requestPermission() async {
-    if (kIsWeb) return false; // no local files on web
+    if (kIsWeb) return false;
     if (!Platform.isAndroid) return false;
 
-    // Prefer Android 13+ media permission; fall back to storage on older versions.
     final audioStatus = await Permission.audio.request();
     if (audioStatus.isGranted) return true;
 
@@ -29,7 +28,6 @@ class LocalMusicLoader {
   Future<List<Song>> loadSongs() async {
     final granted = await _requestPermission();
     if (!granted) {
-      // Permission denied; fallback to dummy list
       return dummySongs;
     }
 
@@ -59,7 +57,6 @@ class LocalMusicLoader {
         duration: duration,
         album: s.album ?? 'Unknown Album',
         filePath: source,
-        // Use standard album art content URI so notifications can display artwork.
         albumArtPath: albumId != null && albumId > 0
             ? 'content://media/external/audio/albumart/$albumId'
             : null,

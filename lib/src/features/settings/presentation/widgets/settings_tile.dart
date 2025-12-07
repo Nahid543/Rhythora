@@ -18,7 +18,6 @@ class SettingsTile extends StatelessWidget {
     this.trailing,
   });
 
-  // Switch tile factory constructor
   factory SettingsTile.switchTile({
     required String title,
     String? subtitle,
@@ -52,7 +51,6 @@ class SettingsTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              // Icon
               Container(
                 width: 40,
                 height: 40,
@@ -68,7 +66,6 @@ class SettingsTile extends StatelessWidget {
               ),
               const SizedBox(width: 16),
 
-              // Title & Subtitle
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,7 +90,6 @@ class SettingsTile extends StatelessWidget {
                 ),
               ),
 
-              // Trailing widget or arrow
               if (trailing != null)
                 trailing!
               else if (onTap != null)

@@ -28,7 +28,6 @@ class _SmoothWaveSplashScreenState extends State<SmoothWaveSplashScreen>
 
   Timer? _navigationTimer;
 
-  // Brand colors
   static const _bgDark = Color(0xFF0A0A0F);
   static const _accentCyan = Color(0xFF00D1FF);
   static const _accentViolet = Color(0xFF7C5CFF);
@@ -53,25 +52,21 @@ class _SmoothWaveSplashScreenState extends State<SmoothWaveSplashScreen>
   }
 
   void _initAnimations() {
-    // Main entrance animation
     _mainController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     );
 
-    // Subtle pulse for music feel
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
 
-    // Waveform animation
     _waveformController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..repeat();
 
-    // Icon animations
     _iconScale = Tween<double>(begin: 0.6, end: 1.0).animate(
       CurvedAnimation(
         parent: _mainController,
@@ -86,7 +81,6 @@ class _SmoothWaveSplashScreenState extends State<SmoothWaveSplashScreen>
       ),
     );
 
-    // Sound ring effect
     _ringScale = Tween<double>(begin: 1.0, end: 1.5).animate(
       CurvedAnimation(
         parent: _pulseController,
@@ -101,7 +95,6 @@ class _SmoothWaveSplashScreenState extends State<SmoothWaveSplashScreen>
       ),
     );
 
-    // Text animations
     _textFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _mainController,
@@ -162,7 +155,6 @@ class _SmoothWaveSplashScreenState extends State<SmoothWaveSplashScreen>
         builder: (context, _) {
           return Stack(
             children: [
-              // Subtle gradient glow behind icon
               Positioned.fill(
                 child: Center(
                   child: Container(
@@ -181,17 +173,14 @@ class _SmoothWaveSplashScreenState extends State<SmoothWaveSplashScreen>
                 ),
               ),
 
-              // Main content
               Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Icon with sound ring effect
                     _buildIconWithRings(iconSize),
 
                     SizedBox(height: size.height * 0.04),
 
-                    // App name
                     SlideTransition(
                       position: _textSlide,
                       child: FadeTransition(
@@ -210,7 +199,6 @@ class _SmoothWaveSplashScreenState extends State<SmoothWaveSplashScreen>
 
                     const SizedBox(height: 16),
 
-                    // Audio waveform visualizer
                     FadeTransition(
                       opacity: _textFade,
                       child: _buildAudioWaveform(),
@@ -218,7 +206,6 @@ class _SmoothWaveSplashScreenState extends State<SmoothWaveSplashScreen>
 
                     const SizedBox(height: 16),
 
-                    // Subtle tagline
                     FadeTransition(
                       opacity: _textFade,
                       child: Text(
@@ -248,7 +235,6 @@ class _SmoothWaveSplashScreenState extends State<SmoothWaveSplashScreen>
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Sound wave rings (subtle pulse)
           ...List.generate(2, (index) {
             final delay = index * 0.5;
             final adjustedScale = 1.0 + ((_ringScale.value - 1.0) * (1 - delay));
@@ -270,7 +256,6 @@ class _SmoothWaveSplashScreenState extends State<SmoothWaveSplashScreen>
             );
           }),
 
-          // Main icon
           FadeTransition(
             opacity: _iconFade,
             child: ScaleTransition(
@@ -305,14 +290,12 @@ class _SmoothWaveSplashScreenState extends State<SmoothWaveSplashScreen>
 
   /// Minimal audio waveform bars
   Widget _buildAudioWaveform() {
-    // Bar configuration
     const int barCount = 9;
     const double barWidth = 3.0;
     const double barSpacing = 4.0;
     const double minHeight = 4.0;
     const double maxHeight = 18.0;
 
-    // Predefined pattern for natural look (center bars taller)
     final List<double> pattern = [0.4, 0.7, 0.5, 0.9, 1.0, 0.9, 0.5, 0.7, 0.4];
 
     return SizedBox(
@@ -321,13 +304,11 @@ class _SmoothWaveSplashScreenState extends State<SmoothWaveSplashScreen>
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: List.generate(barCount, (index) {
-          // Create smooth wave motion
           final phaseOffset = index * 0.4;
           final waveValue = sin(
             (_waveformController.value * 2 * pi) + phaseOffset,
           );
 
-          // Combine pattern with animation
           final heightMultiplier = pattern[index];
           final animatedHeight = minHeight +
               ((maxHeight - minHeight) * heightMultiplier * (0.5 + waveValue * 0.5));

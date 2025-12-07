@@ -7,12 +7,10 @@ import 'src/core/theme/theme_controller.dart' show themeController;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize JustAudio Background
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.rhythora.player.audio.v2',
     androidNotificationChannelName: 'Rhythora Music',
     androidNotificationChannelDescription: 'Music playback controls',
-    // Keep the notification ongoing so the service isn't killed while playing.
     androidNotificationOngoing: true,
     androidShowNotificationBadge: true,
     androidStopForegroundOnPause: false,
@@ -21,7 +19,6 @@ Future<void> main() async {
     artDownscaleHeight: 512,
   );
 
-  // Initialize listening stats service
   try {
     await listeningStatsService.initialize();
     debugPrint('✅ Listening stats service initialized');
@@ -29,7 +26,6 @@ Future<void> main() async {
     debugPrint('⚠️ Failed to initialize listening stats: $e');
   }
 
-  // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -38,7 +34,6 @@ Future<void> main() async {
     ),
   );
 
-  // Set preferred orientations (portrait only for better UX)
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,

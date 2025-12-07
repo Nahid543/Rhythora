@@ -1,4 +1,3 @@
-// lib/src/features/library/presentation/widgets/song_grid_item.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -39,7 +38,6 @@ class SongGridItem extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Album Art
               Expanded(
                 flex: 3,
                 child: Stack(
@@ -72,7 +70,6 @@ class SongGridItem extends StatelessWidget {
                           : _defaultArtwork(),
                     ),
 
-                    // Favorite Badge
                     ValueListenableBuilder<Set<String>>(
                       valueListenable: repo.favoriteSongIds,
                       builder: (context, favorites, _) {
@@ -108,7 +105,6 @@ class SongGridItem extends StatelessWidget {
                 ),
               ),
 
-              // Song Info
               Expanded(
                 flex: 2,
                 child: Padding(

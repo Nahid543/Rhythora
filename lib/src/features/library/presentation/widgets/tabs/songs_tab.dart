@@ -1,4 +1,3 @@
-// lib/src/features/library/presentation/widgets/tabs/songs_tab.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -40,7 +39,7 @@ class _SongsTabState extends State<SongsTab>
   late Animation<double> _fadeAnimation;
 
   @override
-  bool get wantKeepAlive => true; // Keep state when switching tabs
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -74,7 +73,6 @@ class _SongsTabState extends State<SongsTab>
   }
 
   List<Song> _getFilteredAndSortedSongs() {
-    // Filter
     final query = _searchQuery.trim().toLowerCase();
     List<Song> filtered;
     if (query.isEmpty) {
@@ -90,7 +88,6 @@ class _SongsTabState extends State<SongsTab>
       }).toList();
     }
 
-    // Sort
     switch (widget.currentSort) {
       case SortType.title:
         filtered.sort((a, b) =>
@@ -104,7 +101,6 @@ class _SongsTabState extends State<SongsTab>
         filtered.sort((a, b) => b.duration.compareTo(a.duration));
         break;
       case SortType.dateAdded:
-        // Keep default order
         break;
     }
 
@@ -125,7 +121,7 @@ class _SongsTabState extends State<SongsTab>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    super.build(context);
 
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -135,7 +131,6 @@ class _SongsTabState extends State<SongsTab>
 
     final filteredSongs = _getFilteredAndSortedSongs();
 
-    // Calculate stats
     final totalDuration = widget.songs.fold<Duration>(
       Duration.zero,
       (sum, song) => sum + song.duration,
@@ -147,7 +142,6 @@ class _SongsTabState extends State<SongsTab>
       color: colorScheme.primary,
       child: Column(
         children: [
-          // Search Bar
           FadeTransition(
             opacity: _fadeAnimation,
             child: LibrarySearchBar(
@@ -159,7 +153,6 @@ class _SongsTabState extends State<SongsTab>
             ),
           ),
 
-          // Stats Header
           FadeTransition(
             opacity: _fadeAnimation,
             child: LibraryStatsHeader(
@@ -171,7 +164,6 @@ class _SongsTabState extends State<SongsTab>
             ),
           ),
 
-          // View Toggle
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Row(
@@ -198,7 +190,6 @@ class _SongsTabState extends State<SongsTab>
             ),
           ),
 
-          // Song List/Grid
           Expanded(
             child: filteredSongs.isEmpty
                 ? _buildNoResultsState(colorScheme, textTheme)
@@ -222,7 +213,7 @@ class _SongsTabState extends State<SongsTab>
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
       itemCount: filteredSongs.length,
-      itemExtent: 72.0, // Fixed height for performance
+      itemExtent: 72.0,
       itemBuilder: (context, index) {
         final song = filteredSongs[index];
         final fullIndex = allSongs.indexWhere((s) => s.id == song.id);

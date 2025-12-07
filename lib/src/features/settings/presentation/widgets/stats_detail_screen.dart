@@ -65,7 +65,6 @@ class _StatsDetailScreenState extends State<StatsDetailScreen>
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    // Get stats from service
     final todayDuration = listeningStatsService.getTodayListeningTime();
     final todaySongPlays = listeningStatsService.getTodaySongPlays();
     final todayUniqueSongs = listeningStatsService.getTodayUniqueSongsCount();
@@ -74,7 +73,6 @@ class _StatsDetailScreenState extends State<StatsDetailScreen>
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(20),
       children: [
-        // Overview Card
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -176,7 +174,6 @@ class _StatsDetailScreenState extends State<StatsDetailScreen>
 
         const SizedBox(height: 24),
 
-        // Top Songs Section
         Text(
           'Top Songs',
           style: textTheme.titleMedium?.copyWith(
@@ -185,7 +182,6 @@ class _StatsDetailScreenState extends State<StatsDetailScreen>
         ),
         const SizedBox(height: 12),
 
-        // Placeholder for top songs
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(

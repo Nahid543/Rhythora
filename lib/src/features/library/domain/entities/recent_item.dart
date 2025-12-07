@@ -1,4 +1,3 @@
-// lib/src/features/library/domain/entities/recent_item.dart
 
 enum RecentItemType { song, playlist, mix }
 

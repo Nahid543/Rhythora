@@ -1,4 +1,3 @@
-// lib/src/features/library/data/playlist_repository.dart
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -11,7 +10,6 @@ class PlaylistRepository {
   static const _keyFavorites = 'favorite_song_ids';
   static const _favoritesId = 'favorites_system_playlist';
 
-  // Singleton
   PlaylistRepository._();
   static final instance = PlaylistRepository._();
 
@@ -23,7 +21,6 @@ class PlaylistRepository {
     await loadFavorites();
   }
 
-  // ========== Playlists ==========
 
   Future<void> loadPlaylists() async {
     try {
@@ -169,7 +166,6 @@ class PlaylistRepository {
     await _savePlaylists();
   }
 
-  // Get songs for a playlist
   List<Song> getPlaylistSongs(Playlist playlist, List<Song> allSongs) {
     final songMap = {for (var song in allSongs) song.id: song};
     return playlist.songIds
@@ -178,7 +174,6 @@ class PlaylistRepository {
         .toList();
   }
 
-  // ========== Favorites ==========
 
   Future<void> loadFavorites() async {
     try {
@@ -217,7 +212,6 @@ class PlaylistRepository {
         .toList();
   }
 
-  // Get Favorites as virtual playlist
   Playlist getFavoritesAsPlaylist() {
     return Playlist(
       id: _favoritesId,

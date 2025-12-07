@@ -1,4 +1,3 @@
-// lib/src/features/library/presentation/screens/library_screen.dart
 
 import 'package:flutter/material.dart';
 
@@ -33,9 +32,9 @@ class _LibraryScreenState extends State<LibraryScreen>
   final PlaylistRepository _playlistRepo = PlaylistRepository.instance;
   late TabController _tabController;
 
-  bool _useModernView = true; // true = tabs, false = classic list
+  bool _useModernView = true;
 
-  SortType currentSort = SortType.title; // Shared across tabs
+  SortType currentSort = SortType.title;
 
   @override
   void initState() {
@@ -177,7 +176,6 @@ class _LibraryScreenState extends State<LibraryScreen>
           return TabBarView(
             controller: _tabController,
             children: [
-              // Songs Tab
               SongsTab(
                 songs: songs,
                 currentSort: currentSort,
@@ -185,13 +183,11 @@ class _LibraryScreenState extends State<LibraryScreen>
                 onRefresh: _handleRefresh,
               ),
 
-              // Playlists Tab
               PlaylistsTab(
                 allSongs: songs,
                 onSongSelected: widget.onSongSelected,
               ),
 
-              // Favorites Tab
               FavoritesTab(
                 allSongs: songs,
                 onSongSelected: widget.onSongSelected,
@@ -331,7 +327,6 @@ class _LibraryScreenState extends State<LibraryScreen>
   }
 }
 
-// Simple Sort Option Widget (kept here since it's small)
 class _SortOption extends StatelessWidget {
   final String label;
   final IconData icon;

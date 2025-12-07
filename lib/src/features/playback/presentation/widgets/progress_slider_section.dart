@@ -1,4 +1,3 @@
-// lib/src/features/playback/presentation/widgets/progress_slider_section.dart
 
 import 'package:flutter/material.dart';
 import 'dart:async';
@@ -63,7 +62,6 @@ class _ProgressSliderSectionState extends State<ProgressSliderSection> {
   }
 
   void _onSeekEnd(double value) {
-    // Debounce seeking for performance
     _seekDebounce?.cancel();
     _seekDebounce = Timer(const Duration(milliseconds: 100), () {
       widget.player.seek(Duration(milliseconds: value.toInt()));
@@ -77,7 +75,6 @@ class _ProgressSliderSectionState extends State<ProgressSliderSection> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Progress indicator bar
         ValueListenableBuilder<Duration>(
           valueListenable: widget.player.position,
           builder: (context, position, _) {
@@ -91,7 +88,6 @@ class _ProgressSliderSectionState extends State<ProgressSliderSection> {
 
                 return Column(
                   children: [
-                    // Custom slider
                     SliderTheme(
                       data: SliderTheme.of(context).copyWith(
                         trackHeight: 5,
@@ -123,13 +119,11 @@ class _ProgressSliderSectionState extends State<ProgressSliderSection> {
                       ),
                     ),
 
-                    // Time labels
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Current position
                           AnimatedDefaultTextStyle(
                             duration: const Duration(milliseconds: 200),
                             style: widget.textTheme.bodySmall!.copyWith(
@@ -148,7 +142,6 @@ class _ProgressSliderSectionState extends State<ProgressSliderSection> {
                             ),
                           ),
 
-                          // Remaining time (more useful than total)
                           AnimatedDefaultTextStyle(
                             duration: const Duration(milliseconds: 200),
                             style: widget.textTheme.bodySmall!.copyWith(

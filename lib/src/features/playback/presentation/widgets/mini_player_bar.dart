@@ -1,4 +1,3 @@
-// lib/src/features/playback/presentation/widgets/mini_player_bar.dart
 
 import 'package:flutter/material.dart';
 import 'package:on_audio_query/on_audio_query.dart';
@@ -54,7 +53,6 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
 
     _player.currentSong.addListener(_onSongChanged);
     
-    // Show immediately if there's a song
     if (_player.currentSong.value != null) {
       _slideController.forward();
     }
@@ -148,10 +146,8 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Animated Progress Bar
                     _buildProgressBar(colorScheme),
 
-                    // Main Content
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -167,19 +163,16 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
                           ),
                           child: Row(
                             children: [
-                              // Album Artwork with Glow
                               _buildArtwork(song, artworkId, colorScheme, isTablet),
                               
                               SizedBox(width: isTablet ? 16 : 14),
 
-                              // Song Info
                               Expanded(
                                 child: _buildSongInfo(song, colorScheme, textTheme),
                               ),
 
                               SizedBox(width: isTablet ? 16 : 12),
 
-                              // Control Buttons
                               _buildControls(colorScheme, isTablet),
                             ],
                           ),
@@ -360,7 +353,6 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Previous Button
         _CircleButton(
           icon: Icons.skip_previous_rounded,
           size: isTablet ? 42 : 38,
@@ -372,7 +364,6 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
         
         SizedBox(width: isTablet ? 10 : 8),
 
-        // Play/Pause Button
         ValueListenableBuilder<bool>(
           valueListenable: _player.isPlaying,
           builder: (context, isPlaying, _) {
@@ -395,7 +386,6 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
 
         SizedBox(width: isTablet ? 10 : 8),
 
-        // Next Button
         _CircleButton(
           icon: Icons.skip_next_rounded,
           size: isTablet ? 42 : 38,
@@ -409,7 +399,6 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
   }
 }
 
-// Reusable Circle Button
 class _CircleButton extends StatefulWidget {
   final IconData icon;
   final double size;

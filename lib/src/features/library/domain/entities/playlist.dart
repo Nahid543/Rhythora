@@ -1,4 +1,3 @@
-// lib/src/features/library/domain/entities/playlist.dart
 
 import 'package:flutter/foundation.dart';
 
@@ -9,7 +8,7 @@ class Playlist {
   final List<String> songIds;
   final DateTime createdAt;
   final DateTime lastModified;
-  final bool isSystemPlaylist; // For Favorites
+  final bool isSystemPlaylist;
 
   const Playlist({
     required this.id,
@@ -53,7 +52,6 @@ class Playlist {
         isSystemPlaylist: json['isSystemPlaylist'] as bool? ?? false,
       );
 
-  // Helper getters
   int get songCount => songIds.length;
   bool get isEmpty => songIds.isEmpty;
 }

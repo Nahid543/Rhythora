@@ -96,24 +96,21 @@ class _NavBarItemState extends State<_NavBarItem>
   void initState() {
     super.initState();
     
-    // Faster, smoother animation controller
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200), // Reduced from 300ms
+      duration: const Duration(milliseconds: 200),
     );
 
-    // Optimized scale animation with better curve
     _scaleAnimation = Tween<double>(
       begin: 1.0,
-      end: 1.12, // Slightly reduced from 1.15 for subtlety
+      end: 1.12,
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutCubic, // Smoother curve
+      curve: Curves.easeOutCubic,
     ));
 
-    // Start animation immediately if selected
     if (widget.isSelected) {
-      _controller.value = 1.0; // Skip animation on init
+      _controller.value = 1.0;
     }
   }
 
@@ -136,10 +133,8 @@ class _NavBarItemState extends State<_NavBarItem>
   }
 
   void _handleTap() {
-    // Immediate feedback
     setState(() => _isTapped = true);
     
-    // Quick bounce effect
     _controller.forward().then((_) {
       if (mounted) {
         Future.delayed(const Duration(milliseconds: 50), () {
@@ -150,7 +145,6 @@ class _NavBarItemState extends State<_NavBarItem>
       }
     });
 
-    // Call tap immediately (don't wait for animation)
     widget.onTap();
   }
 
@@ -160,9 +154,9 @@ class _NavBarItemState extends State<_NavBarItem>
 
     return GestureDetector(
       onTap: _handleTap,
-      behavior: HitTestBehavior.opaque, // Better tap detection
+      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200), // Faster transition
+        duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         padding: EdgeInsets.symmetric(
           horizontal: widget.isSelected ? 18 : 12,
@@ -177,7 +171,6 @@ class _NavBarItemState extends State<_NavBarItem>
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Animated Icon
             AnimatedBuilder(
               animation: _scaleAnimation,
               builder: (context, child) {
@@ -186,7 +179,6 @@ class _NavBarItemState extends State<_NavBarItem>
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // Subtle glow effect when selected
                       if (widget.isSelected)
                         Container(
                           width: 36,
@@ -202,10 +194,9 @@ class _NavBarItemState extends State<_NavBarItem>
                             ],
                           ),
                         ),
-                      // Icon
                       Icon(
                         widget.icon,
-                        size: 24, // Slightly smaller for consistency
+                        size: 24,
                         color: widget.isSelected
                             ? widget.colorScheme.primary
                             : widget.colorScheme.onSurface.withOpacity(0.65),
@@ -216,10 +207,9 @@ class _NavBarItemState extends State<_NavBarItem>
               },
             ),
 
-            // Animated Label with optimized size transition
             ClipRect(
               child: AnimatedSize(
-                duration: const Duration(milliseconds: 200), // Faster
+                duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOutCubic,
                 alignment: Alignment.centerLeft,
                 child: widget.isSelected
@@ -231,7 +221,7 @@ class _NavBarItemState extends State<_NavBarItem>
                             fontWeight: FontWeight.w700,
                             color: widget.colorScheme.primary,
                             letterSpacing: 0.1,
-                            height: 1.0, // Prevent layout shifts
+                            height: 1.0,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.clip,

@@ -1,4 +1,3 @@
-// lib/src/features/playback/data/audio_player_manager.dart
 
 import 'dart:io';
 import 'package:audio_session/audio_session.dart';
@@ -31,7 +30,6 @@ class AudioPlayerManager {
 
   String? _currentTrackingSongId;
 
-  // State notifiers
   final ValueNotifier<bool> isPlaying = ValueNotifier<bool>(false);
   final ValueNotifier<Duration> position = ValueNotifier<Duration>(
     Duration.zero,
@@ -46,7 +44,6 @@ class AudioPlayerManager {
   final ValueNotifier<Song?> currentSong = ValueNotifier<Song?>(null);
   final ValueNotifier<int> currentIndex = ValueNotifier<int>(0);
 
-  // Callbacks
   Function(Song song)? onSongChanged;
   VoidCallback? onQueueEnded;
 
@@ -54,7 +51,6 @@ class AudioPlayerManager {
     final session = await AudioSession.instance;
     await session.configure(const AudioSessionConfiguration.music());
 
-    // Pause when headphones are unplugged or audio focus is lost
     session.becomingNoisyEventStream.listen((_) async {
       debugPrint('dY"ñ Audio focus: becoming noisy - pausing playback');
       await pause();
@@ -70,34 +66,28 @@ class AudioPlayerManager {
     await _copyDefaultArtwork();
     await _restorePlayerState();
 
-    // Playing state
     _player.playingStream.listen((playing) async {
       isPlaying.value = playing;
 
       if (!playing && _currentTrackingSongId != null) {
-        // User paused - pause tracking
         await listeningStatsService.pauseListening();
         debugPrint('⏸️ Stats: Paused tracking');
       } else if (playing && _currentTrackingSongId != null) {
-        // User resumed - resume tracking
         await listeningStatsService.resumeListening();
         debugPrint('▶️ Stats: Resumed tracking');
       }
     });
 
-    // Position tracking
     _player.positionStream.listen((pos) {
       position.value = pos;
     });
 
-    // Duration tracking
     _player.durationStream.listen((dur) {
       if (dur != null) {
         duration.value = dur;
       }
     });
 
-    // Track index changes
     _player.currentIndexStream.listen((index) async {
       if (index == null || _currentQueue == null) return;
 
@@ -118,7 +108,6 @@ class AudioPlayerManager {
       }
     });
 
-    // Auto-advance detection
     _player.positionDiscontinuityStream.listen((discontinuity) async {
       debugPrint('📊 Position discontinuity: \${discontinuity.reason}');
 
@@ -131,7 +120,6 @@ class AudioPlayerManager {
       }
     });
 
-    // Handle queue completion
     _player.processingStateStream.listen((state) async {
       debugPrint('📊 Processing state: \$state');
 
@@ -150,7 +138,6 @@ class AudioPlayerManager {
       }
     });
 
-    // Handle player errors
     _player.playbackEventStream.listen(
       (event) {},
       onError: (Object e, StackTrace st) async {
@@ -316,7 +303,6 @@ class AudioPlayerManager {
     final mediaItem = _createMediaItem(song);
 
     if (song.isLocalFile && song.filePath != null && song.filePath!.isNotEmpty) {
-      // Support both content:// URIs (Android scoped storage) and absolute file paths.
       final parsed = Uri.tryParse(song.filePath!);
       if (parsed != null && parsed.scheme.isNotEmpty) {
         return AudioSource.uri(parsed, tag: mediaItem);
@@ -372,7 +358,6 @@ class AudioPlayerManager {
         await listeningStatsService.startListening(currentSong.value!.id);
         debugPrint('🎵 Stats: Started tracking \${currentSong.value!.title}');
       } else if (_currentTrackingSongId != null) {
-        // Resuming same song
         await listeningStatsService.resumeListening();
         debugPrint('▶️ Stats: Resumed tracking');
       }

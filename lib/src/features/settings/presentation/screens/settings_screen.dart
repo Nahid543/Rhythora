@@ -22,7 +22,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late SharedPreferences _prefs;
   bool _isLoading = true;
 
-  // Settings values
   bool _privacyMode = false;
   bool _isDarkMode = true;
   Duration? _sleepTimerDuration;
@@ -266,7 +265,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (confirmed == true && mounted) {
-      // await listeningStatsService.clearHistory();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -346,7 +344,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
     } catch (_) {
-      // Fall through to show failure snackbar.
     }
 
     if (!mounted) return;
@@ -395,7 +392,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
-          // Appearance Section
           SettingsSection(
             title: 'Appearance',
             icon: Icons.palette_rounded,
@@ -412,7 +408,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 8),
 
-          // Sleep Timer Section
           SettingsSection(
             title: 'Sleep Timer',
             icon: Icons.bedtime_rounded,
@@ -430,7 +425,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 8),
 
-          // Listening Statistics Section
           SettingsSection(
             title: 'Listening Statistics',
             icon: Icons.insights_rounded,
@@ -482,7 +476,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 8),
 
-          // Storage Section
           SettingsSection(
             title: 'Storage',
             icon: Icons.storage_rounded,
@@ -498,7 +491,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 8),
 
-          // About Section
           SettingsSection(
             title: 'About',
             icon: Icons.info_rounded,

@@ -1,4 +1,3 @@
-// lib/src/features/library/presentation/widgets/song_list_item.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -42,7 +41,6 @@ class SongListItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             children: [
-              // Album Art
               Container(
                 width: 56,
                 height: 56,
@@ -71,7 +69,6 @@ class SongListItem extends StatelessWidget {
               ),
               const SizedBox(width: 12),
 
-              // Song Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,7 +118,6 @@ class SongListItem extends StatelessWidget {
                 ),
               ),
 
-              // Trailing (number or more icon)
               if (showTrailingNumber && trailingNumber != null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

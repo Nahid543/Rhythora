@@ -1,9 +1,9 @@
 import 'package:just_audio/just_audio.dart';
 
 enum RepeatMode {
-  off, // Play queue once, stop at end
-  all, // Loop entire queue
-  one, // Repeat current song
+  off,
+  all,
+  one,
 }
 
 extension RepeatModeExtension on RepeatMode {

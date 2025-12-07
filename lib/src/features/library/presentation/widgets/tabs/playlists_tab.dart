@@ -24,11 +24,11 @@ class _PlaylistsTabState extends State<PlaylistsTab>
   final PlaylistRepository _repo = PlaylistRepository.instance;
 
   @override
-  bool get wantKeepAlive => true; // Keep state when switching tabs
+  bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    super.build(context);
 
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -41,7 +41,6 @@ class _PlaylistsTabState extends State<PlaylistsTab>
 
         return Column(
           children: [
-            // Create Playlist Button
             Padding(
               padding: const EdgeInsets.all(16),
               child: _CreatePlaylistButton(
@@ -51,7 +50,6 @@ class _PlaylistsTabState extends State<PlaylistsTab>
               ),
             ),
 
-            // Playlists List
             Expanded(
               child: allPlaylists.isEmpty
                   ? _buildEmptyState(colorScheme, textTheme)
@@ -59,7 +57,7 @@ class _PlaylistsTabState extends State<PlaylistsTab>
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: allPlaylists.length,
-                      itemExtent: 80.0, // Fixed height for performance
+                      itemExtent: 80.0,
                       itemBuilder: (context, index) {
                         final playlist = allPlaylists[index];
                         return _PlaylistTile(
@@ -159,7 +157,6 @@ class _PlaylistsTabState extends State<PlaylistsTab>
       final playlist = await _repo.createPlaylist(name);
       if (!mounted) return;
 
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Created "$name"'),
@@ -171,7 +168,6 @@ class _PlaylistsTabState extends State<PlaylistsTab>
         ),
       );
 
-      // Open the playlist
       _openPlaylist(context, playlist);
     } catch (e) {
       if (!mounted) return;
@@ -322,7 +318,6 @@ class _PlaylistsTabState extends State<PlaylistsTab>
   }
 }
 
-// Create Playlist Button Widget
 class _CreatePlaylistButton extends StatelessWidget {
   final VoidCallback onPressed;
   final ColorScheme colorScheme;
@@ -381,7 +376,6 @@ class _CreatePlaylistButton extends StatelessWidget {
   }
 }
 
-// Playlist Tile Widget
 class _PlaylistTile extends StatelessWidget {
   final Playlist playlist;
   final List<Song> allSongs;
@@ -439,11 +433,9 @@ class _PlaylistTile extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
-                      // Playlist Artwork (mosaic or icon)
                       _buildPlaylistArtwork(playlistSongs),
                       const SizedBox(width: 12),
 
-                      // Playlist Info
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -483,7 +475,6 @@ class _PlaylistTile extends StatelessWidget {
                         ),
                       ),
 
-                      // Trailing Icon
                       if (onLongPress != null)
                         Icon(
                           Icons.more_vert,
@@ -503,7 +494,6 @@ class _PlaylistTile extends StatelessWidget {
   Widget _buildPlaylistArtwork(List<Song> songs) {
     const size = 56.0;
 
-    // Favorites - special heart icon
     if (playlist.isSystemPlaylist) {
       return Container(
         width: size,
@@ -520,7 +510,6 @@ class _PlaylistTile extends StatelessWidget {
       );
     }
 
-    // Empty playlist - default icon
     if (songs.isEmpty) {
       return Container(
         width: size,
@@ -537,7 +526,6 @@ class _PlaylistTile extends StatelessWidget {
       );
     }
 
-    // 1-3 songs - single artwork
     if (songs.length <= 3) {
       final song = songs.first;
       return Container(
@@ -561,7 +549,6 @@ class _PlaylistTile extends StatelessWidget {
       );
     }
 
-    // 4+ songs - 2x2 mosaic
     return Container(
       width: size,
       height: size,

@@ -21,7 +21,6 @@ class RhythoraApp extends StatelessWidget {
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
           themeMode: themeController.themeMode,
-          // start on animated splash instead of RootShell
           home: const SmoothWaveSplashScreen(),
         );
       },

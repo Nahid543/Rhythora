@@ -1,4 +1,3 @@
-// lib/src/features/library/presentation/widgets/song_options_bottom_sheet.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -34,7 +33,6 @@ class SongOptionsBottomSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle
             const SizedBox(height: 8),
             Container(
               width: 40,
@@ -46,12 +44,10 @@ class SongOptionsBottomSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Song Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  // Album Art
                   Container(
                     width: 56,
                     height: 56,
@@ -79,7 +75,6 @@ class SongOptionsBottomSheet extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
 
-                  // Song Info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,14 +104,12 @@ class SongOptionsBottomSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Divider
             Divider(
               height: 1,
               thickness: 1,
               color: colorScheme.outlineVariant,
             ),
 
-            // Options List
             _OptionTile(
               icon: Icons.favorite_border_rounded,
               label: 'Add to Favorites',
@@ -255,7 +248,6 @@ class SongOptionsBottomSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Create New Playlist
             ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(8),
@@ -283,7 +275,6 @@ class SongOptionsBottomSheet extends StatelessWidget {
             if (playlists.isNotEmpty)
               const Divider(height: 1, indent: 16, endIndent: 16),
 
-            // Existing Playlists
             if (playlists.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(24),
@@ -471,7 +462,6 @@ class SongOptionsBottomSheet extends StatelessWidget {
   }
 }
 
-// Option Tile Widget
 class _OptionTile extends StatelessWidget {
   final IconData icon;
   final String label;

@@ -1,4 +1,3 @@
-// lib/src/app/root_shell.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -44,7 +43,6 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Listen for song changes to update recent
     _player.currentSong.addListener(_onPlayerSongChanged);
 
     _loadPersistedState();
@@ -133,7 +131,6 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // Load recently played
       final recentJson = prefs.getString('recently_played');
       if (recentJson != null) {
         final List<dynamic> decoded = jsonDecode(recentJson);
@@ -143,7 +140,6 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
         debugPrint('✅ Loaded ${_recentlyPlayed.length} recently played');
       }
 
-      // Load song and queue
       final songJson = prefs.getString('current_song');
       final queueJson = prefs.getString('queue');
       final songIndex = prefs.getInt('current_song_index') ?? -1;
@@ -171,7 +167,6 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
           isRestoring: true,
         );
 
-        // Restore position
         final position = prefs.getInt('playback_position') ?? 0;
         if (position > 0) {
           await _player.seek(Duration(milliseconds: position));

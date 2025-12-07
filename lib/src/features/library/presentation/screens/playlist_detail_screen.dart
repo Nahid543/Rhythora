@@ -64,7 +64,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
       body: ValueListenableBuilder<List<Playlist>>(
         valueListenable: _repo.playlistsNotifier,
         builder: (context, playlists, _) {
-          // Get updated playlist
           final currentPlaylist = widget.playlist.isSystemPlaylist
               ? _repo.getFavoritesAsPlaylist()
               : playlists.firstWhere(
@@ -81,7 +80,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
           return CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              // App Bar with Playlist Header
               _buildSliverAppBar(
                 currentPlaylist,
                 playlistSongs,
@@ -91,7 +89,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
                 isTablet,
               ),
 
-              // Action Buttons
               SliverToBoxAdapter(
                 child: FadeTransition(
                   opacity: _fadeAnimation,
@@ -103,7 +100,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
                 ),
               ),
 
-              // Song List
               if (playlistSongs.isEmpty)
                 SliverFillRemaining(
                   child: _buildEmptyState(colorScheme, textTheme),
@@ -173,7 +169,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
               ),
               child: Column(
                 children: [
-                  // Playlist Artwork
                   Hero(
                     tag: 'playlist_${playlist.id}',
                     child: _buildPlaylistArtwork(
@@ -185,7 +180,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
                   ),
                   const SizedBox(height: 24),
 
-                  // Playlist Name
                   Text(
                     playlist.name,
                     style: textTheme.headlineSmall?.copyWith(
@@ -198,7 +192,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
                   ),
                   const SizedBox(height: 8),
 
-                  // Stats
                   Text(
                     '${songs.length} songs · ${_formatDuration(totalDuration)}',
                     style: textTheme.bodyMedium?.copyWith(
@@ -221,7 +214,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
     double size,
     ColorScheme colorScheme,
   ) {
-    // Favorites - heart icon
     if (isSystemPlaylist) {
       return Container(
         width: size,
@@ -250,7 +242,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
       );
     }
 
-    // Empty playlist
     if (songs.isEmpty) {
       return Container(
         width: size,
@@ -275,7 +266,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
       );
     }
 
-    // 1-3 songs - single artwork
     if (songs.length <= 3) {
       final song = songs.first;
       return Container(
@@ -307,7 +297,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
       );
     }
 
-    // 4+ songs - 2x2 mosaic
     return Container(
       width: size,
       height: size,
@@ -379,7 +368,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Row(
         children: [
-          // Play Button
           Expanded(
             flex: 2,
             child: FilledButton.icon(
@@ -398,7 +386,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
           ),
           const SizedBox(width: 12),
 
-          // Shuffle Button
           Expanded(
             child: FilledButton.tonalIcon(
               onPressed: songs.isEmpty
@@ -425,7 +412,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
               style: IconButton.styleFrom(padding: const EdgeInsets.all(16)),
             ),
 
-          // Reorder Button
           if (songs.length > 1 && !widget.playlist.isSystemPlaylist)
             IconButton.filledTonal(
               onPressed: () => setState(() => _isReordering = true),
@@ -725,8 +711,8 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
           FilledButton(
             onPressed: () {
               _repo.deletePlaylist(playlist.id);
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Go back to library
+              Navigator.pop(context);
+              Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Deleted "${playlist.name}"'),
@@ -754,9 +740,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
   }
 }
 
-// ============================================
-// ADD SONGS SHEET
-// ============================================
 
 class _AddSongsSheet extends StatefulWidget {
   final List<Song> availableSongs;
@@ -806,7 +789,6 @@ class _AddSongsSheetState extends State<_AddSongsSheet> {
       ),
       child: Column(
         children: [
-          // Handle
           const SizedBox(height: 8),
           Container(
             width: 40,
@@ -818,7 +800,6 @@ class _AddSongsSheetState extends State<_AddSongsSheet> {
           ),
           const SizedBox(height: 16),
 
-          // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -842,7 +823,6 @@ class _AddSongsSheetState extends State<_AddSongsSheet> {
           ),
           const SizedBox(height: 16),
 
-          // Search Bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: TextField(
@@ -869,7 +849,6 @@ class _AddSongsSheetState extends State<_AddSongsSheet> {
           ),
           const SizedBox(height: 16),
 
-          // Song List
           Expanded(
             child: filteredSongs.isEmpty
                 ? Center(

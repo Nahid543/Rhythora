@@ -1,4 +1,3 @@
-// lib/src/features/playback/presentation/screens/now_playing_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -34,7 +33,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
   final AudioPlayerManager _player = AudioPlayerManager.instance;
   final PlaylistRepository _playlistRepo = PlaylistRepository.instance;
 
-  // Gesture tracking
   double _verticalDragOffset = 0.0;
   double _horizontalDragOffset = 0.0;
   bool _isDragging = false;
@@ -502,7 +500,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
         ),
       ),
       actions: [
-        // Favorite Button
         ValueListenableBuilder<Set<String>>(
           valueListenable: _playlistRepo.favoriteSongIds,
           builder: (context, favorites, _) {
@@ -555,7 +552,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
           },
         ),
 
-        // More Options Button
         Container(
           margin: const EdgeInsets.only(right: 8),
           decoration: BoxDecoration(
@@ -641,7 +637,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
             child: Column(
               key: ValueKey(song.id),
               children: [
-                // Drag Handle
                 Container(
                   width: 48,
                   height: 5,
@@ -653,7 +648,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
 
                 SizedBox(height: topSpacing),
 
-                // Album Artwork
                 Flexible(
                   flex: isTablet ? 5 : (isCompactHeight ? 5 : 6),
                   child: Align(
@@ -671,13 +665,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
 
                 SizedBox(height: sectionsGap),
 
-                // Song Info & Controls
                 Flexible(
                   flex: isTablet ? 4 : (isCompactHeight ? 6 : 5),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Song Title
                       ConstrainedBox(
                         constraints: BoxConstraints(
                           maxWidth: availableWidth > 0
@@ -701,7 +693,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
 
                       SizedBox(height: titleGap),
 
-                      // Artist Badge
                       Container(
                         constraints: BoxConstraints(
                           maxWidth: availableWidth > 0
@@ -752,7 +743,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
 
                       SizedBox(height: badgeGap),
 
-                      // Progress Slider
                       ProgressSliderSection(
                         player: _player,
                         colorScheme: colorScheme,
@@ -761,7 +751,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
 
                       SizedBox(height: sliderGap),
 
-                      // Playback Controls
                       PlaybackControls(
                         player: _player,
                         onNext: () {
@@ -777,7 +766,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
 
                       SizedBox(height: controlsGap),
 
-                      // Compact Queue Button (Always Visible)
                       Center(
                         child: _QueueButton(
                           onPressed: widget.onQueueTap,
@@ -799,7 +787,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
 
 }
 
-// Compact Queue Button
 class _QueueButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final ColorScheme colorScheme;
@@ -917,7 +904,6 @@ class _QueueButtonState extends State<_QueueButton>
   }
 }
 
-// Menu Feature Widget
 class _MenuFeature extends StatelessWidget {
   final IconData icon;
   final String text;
@@ -962,7 +948,6 @@ class _MenuFeature extends StatelessWidget {
   }
 }
 
-// Gesture Hint Widget
 class _GestureHint extends StatelessWidget {
   final IconData icon;
   final String text;

@@ -24,7 +24,6 @@ class _ExportDialogState extends State<ExportDialog> {
     HapticFeedback.mediumImpact();
 
     try {
-      // Get listening history data
       final listeningTime = listeningStatsService.getTodayListeningTime();
       final data = {
         'export_date': DateTime.now().toIso8601String(),
@@ -42,19 +41,16 @@ class _ExportDialogState extends State<ExportDialog> {
         content = const JsonEncoder.withIndent('  ').convert(data);
         fileName = 'rhythora_stats_${DateTime.now().millisecondsSinceEpoch}.json';
       } else {
-        // CSV format - Fix the date formatting
         final exportDate = DateTime.now().toLocal().toString().split('.')[0];
         content = 'Export Date,Total Time (seconds),Total Time (minutes),Song Plays,Unique Songs\n'
             '$exportDate,${data['total_time_seconds']},${data['total_time_minutes']},${data['song_plays']},${data['unique_songs']}';
         fileName = 'rhythora_stats_${DateTime.now().millisecondsSinceEpoch}.csv';
       }
 
-      // Save to app documents directory
       final directory = await getApplicationDocumentsDirectory();
       final file = File('${directory.path}/$fileName');
       await file.writeAsString(content);
 
-      // Share the file
       await Share.shareXFiles(
         [XFile(file.path)],
         subject: 'Rhythora Listening Statistics',
@@ -163,7 +159,6 @@ class _ExportDialogState extends State<ExportDialog> {
           ),
           const SizedBox(height: 16),
 
-          // JSON Option
           RadioListTile<String>(
             value: 'json',
             groupValue: _selectedFormat,
@@ -181,7 +176,6 @@ class _ExportDialogState extends State<ExportDialog> {
             ),
           ),
 
-          // CSV Option
           RadioListTile<String>(
             value: 'csv',
             groupValue: _selectedFormat,
