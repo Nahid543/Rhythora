@@ -1,4 +1,4 @@
-
+import 'dart:async';
 import 'dart:io';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
@@ -19,6 +19,7 @@ class AudioPlayerManager {
   }
 
   static final AudioPlayerManager instance = AudioPlayerManager._internal();
+  final Completer<void> _initCompleter = Completer<void>();
 
   final AudioPlayer _player = AudioPlayer();
 
@@ -48,109 +49,117 @@ class AudioPlayerManager {
   VoidCallback? onQueueEnded;
 
   Future<void> _init() async {
-    final session = await AudioSession.instance;
-    await session.configure(const AudioSessionConfiguration.music());
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration.music());
 
-    session.becomingNoisyEventStream.listen((_) async {
-      debugPrint('dY"ñ Audio focus: becoming noisy - pausing playback');
-      await pause();
-    });
-
-    session.interruptionEventStream.listen((event) async {
-      debugPrint('dY"ñ Audio focus interruption: ${event.type} (begin: ${event.begin})');
-      if (event.begin) {
+      session.becomingNoisyEventStream.listen((_) async {
+        debugPrint('[AudioPlayer] Becoming noisy - pausing playback');
         await pause();
-      }
-    });
+      });
 
-    await _copyDefaultArtwork();
-    await _restorePlayerState();
+      session.interruptionEventStream.listen((event) async {
+        debugPrint('[AudioPlayer] Interruption: ${event.type} (begin: ${event.begin})');
+        if (event.begin) {
+          await pause();
+        }
+      });
 
-    _player.playingStream.listen((playing) async {
-      isPlaying.value = playing;
+      await _copyDefaultArtwork();
+      await _restorePlayerState();
 
-      if (!playing && _currentTrackingSongId != null) {
-        await listeningStatsService.pauseListening();
-        debugPrint('⏸️ Stats: Paused tracking');
-      } else if (playing && _currentTrackingSongId != null) {
-        await listeningStatsService.resumeListening();
-        debugPrint('▶️ Stats: Resumed tracking');
-      }
-    });
+      _player.playingStream.listen((playing) async {
+        isPlaying.value = playing;
 
-    _player.positionStream.listen((pos) {
-      position.value = pos;
-    });
+        if (!playing && _currentTrackingSongId != null) {
+          await listeningStatsService.pauseListening();
+          debugPrint('[Stats] Paused tracking');
+        } else if (playing && _currentTrackingSongId != null) {
+          await listeningStatsService.resumeListening();
+          debugPrint('[Stats] Resumed tracking');
+        }
+      });
 
-    _player.durationStream.listen((dur) {
-      if (dur != null) {
-        duration.value = dur;
-      }
-    });
+      _player.positionStream.listen((pos) {
+        position.value = pos;
+      });
 
-    _player.currentIndexStream.listen((index) async {
-      if (index == null || _currentQueue == null) return;
+      _player.durationStream.listen((dur) {
+        if (dur != null) {
+          duration.value = dur;
+        }
+      });
 
-      debugPrint(
-        '📍 Index changed to: \$index (manual: \$_isManualSeek, restoring: \$_isRestoringState)',
+      _player.currentIndexStream.listen((index) async {
+        if (index == null || _currentQueue == null) {
+          return;
+        }
+
+        debugPrint('[AudioPlayer] Index changed to: $index (manual: $_isManualSeek, restoring: $_isRestoringState)');
+
+        currentIndex.value = index;
+
+        if (!_isManualSeek && !_isRestoringState) {
+          debugPrint('[AudioPlayer] Auto advanced to index: $index');
+          await _handleSongChange(index);
+        } else {
+          _isManualSeek = false;
+          if (!_isRestoringState) {
+            await _handleSongChange(index);
+          }
+        }
+      });
+
+      _player.positionDiscontinuityStream.listen((discontinuity) async {
+        debugPrint('[AudioPlayer] Position discontinuity: ${discontinuity.reason}');
+
+        if (discontinuity.reason == PositionDiscontinuityReason.autoAdvance) {
+          final index = _player.currentIndex;
+          if (index != null && _currentQueue != null && !_isRestoringState) {
+            debugPrint('[AudioPlayer] Auto-advance confirmed: $index');
+            await _handleSongChange(index);
+          }
+        }
+      });
+
+      _player.processingStateStream.listen((state) async {
+        debugPrint('[AudioPlayer] Processing state: $state');
+
+        if (state == ProcessingState.completed) {
+          if (_currentTrackingSongId != null) {
+            await listeningStatsService.stopListening();
+            _currentTrackingSongId = null;
+            debugPrint('[Stats] Song completed, stopped tracking');
+          }
+
+          if (repeatMode.value == RepeatMode.off) {
+            debugPrint('[AudioPlayer] Queue completed');
+            isPlaying.value = false;
+            onQueueEnded?.call();
+          }
+        }
+      });
+
+      _player.playbackEventStream.listen(
+        (event) {},
+        onError: (Object e, StackTrace st) async {
+          debugPrint('[AudioPlayer] Playback error: $e');
+          if (_currentTrackingSongId != null) {
+            await listeningStatsService.stopListening();
+            _currentTrackingSongId = null;
+          }
+        },
       );
 
-      currentIndex.value = index;
-
-      if (!_isManualSeek && !_isRestoringState) {
-        debugPrint('🎵 Auto-advanced to index: \$index');
-        await _handleSongChange(index);
-      } else {
-        _isManualSeek = false;
-        if (!_isRestoringState) {
-          await _handleSongChange(index);
-        }
+      debugPrint('[AudioPlayer] Initialized');
+    } finally {
+      if (!_initCompleter.isCompleted) {
+        _initCompleter.complete();
       }
-    });
-
-    _player.positionDiscontinuityStream.listen((discontinuity) async {
-      debugPrint('📊 Position discontinuity: \${discontinuity.reason}');
-
-      if (discontinuity.reason == PositionDiscontinuityReason.autoAdvance) {
-        final index = _player.currentIndex;
-        if (index != null && _currentQueue != null && !_isRestoringState) {
-          debugPrint('✅ Auto-advance confirmed to index: \$index');
-          await _handleSongChange(index);
-        }
-      }
-    });
-
-    _player.processingStateStream.listen((state) async {
-      debugPrint('📊 Processing state: \$state');
-
-      if (state == ProcessingState.completed) {
-        if (_currentTrackingSongId != null) {
-          await listeningStatsService.stopListening();
-          _currentTrackingSongId = null;
-          debugPrint('⏹️ Stats: Song completed, stopped tracking');
-        }
-
-        if (repeatMode.value == RepeatMode.off) {
-          debugPrint('⏹️ Queue completed');
-          isPlaying.value = false;
-          onQueueEnded?.call();
-        }
-      }
-    });
-
-    _player.playbackEventStream.listen(
-      (event) {},
-      onError: (Object e, StackTrace st) async {
-        debugPrint('❌ Player error: \$e');
-        if (_currentTrackingSongId != null) {
-          await listeningStatsService.stopListening();
-          _currentTrackingSongId = null;
-        }
-      },
-    );
-
-    debugPrint('✅ AudioPlayerManager initialized');
+    }
   }
+
+  Future<void> _ensureInitialized() => _initCompleter.future;
 
   Future<void> _restorePlayerState() async {
     try {
@@ -222,6 +231,13 @@ class AudioPlayerManager {
 
   Future<void> _copyDefaultArtwork() async {
     try {
+      if (_defaultArtworkPath != null) {
+        final cachedFile = File(_defaultArtworkPath!);
+        if (cachedFile.existsSync()) {
+          return;
+        }
+      }
+
       final directory = await getApplicationDocumentsDirectory();
       final artworkFile = File('${directory.path}/default_artwork.png');
 
@@ -231,13 +247,33 @@ class AudioPlayerManager {
         );
         final buffer = data.buffer.asUint8List();
         await artworkFile.writeAsBytes(buffer);
-        debugPrint('✅ Default artwork copied');
+        debugPrint('[AudioPlayer] Default artwork copied');
       }
 
       _defaultArtworkPath = artworkFile.path;
     } catch (e) {
-      debugPrint('❌ Failed to copy default artwork: \$e');
+      debugPrint('[AudioPlayer] Failed to copy default artwork: $e');
     }
+  }
+
+  Uri? _resolveArtworkUri(Song song) {
+    final artPath = song.albumArtPath;
+    if (artPath != null && artPath.isNotEmpty) {
+      final parsed = Uri.tryParse(artPath);
+      if (parsed != null) {
+        if (parsed.scheme.isEmpty || parsed.scheme == 'file') {
+          return Uri.file(artPath);
+        }
+        return parsed;
+      }
+      return Uri.file(artPath);
+    }
+
+    if (_defaultArtworkPath != null && _defaultArtworkPath!.isNotEmpty) {
+      return Uri.file(_defaultArtworkPath!);
+    }
+
+    return null;
   }
 
   Future<void> setSong(
@@ -248,6 +284,7 @@ class AudioPlayerManager {
     bool isRestoring = false,
   }) async {
     try {
+      await _ensureInitialized();
       _isRestoringState = isRestoring;
 
       if (_currentTrackingSongId != null && !isRestoring) {
@@ -316,22 +353,7 @@ class AudioPlayerManager {
   }
 
   MediaItem _createMediaItem(Song song) {
-    Uri? artworkUri;
-
-    if (song.albumArtPath != null && song.albumArtPath!.isNotEmpty) {
-      try {
-        artworkUri = Uri.file(song.albumArtPath!);
-      } catch (e) {
-        if (_defaultArtworkPath != null) {
-          artworkUri = Uri.file(_defaultArtworkPath!);
-        }
-      }
-    } else {
-      if (_defaultArtworkPath != null) {
-        artworkUri = Uri.file(_defaultArtworkPath!);
-      }
-    }
-
+    final artworkUri = _resolveArtworkUri(song);
     return MediaItem(
       id: song.id,
       title: song.title,
@@ -345,6 +367,7 @@ class AudioPlayerManager {
 
   Future<void> play() async {
     try {
+      await _ensureInitialized();
       if (_player.audioSource == null) {
         debugPrint('⚠️ No audio source to play');
         return;
@@ -370,6 +393,7 @@ class AudioPlayerManager {
 
   Future<void> pause() async {
     try {
+      await _ensureInitialized();
       await _player.pause();
 
       if (_currentTrackingSongId != null) {
@@ -385,6 +409,7 @@ class AudioPlayerManager {
 
   Future<void> stop() async {
     try {
+      await _ensureInitialized();
       await _player.stop();
 
       if (_currentTrackingSongId != null) {
@@ -401,6 +426,7 @@ class AudioPlayerManager {
 
   Future<void> seek(Duration newPosition) async {
     try {
+      await _ensureInitialized();
       await _player.seek(newPosition);
     } catch (e) {
       debugPrint('❌ Error on seek: \$e');
@@ -409,6 +435,7 @@ class AudioPlayerManager {
 
   Future<void> skipToNext() async {
     try {
+      await _ensureInitialized();
       if (!_player.hasNext) {
         debugPrint('⚠️ No next song available');
         return;
@@ -437,6 +464,7 @@ class AudioPlayerManager {
 
   Future<void> skipToPrevious() async {
     try {
+      await _ensureInitialized();
       if (_player.position.inSeconds > 3) {
         await _player.seek(Duration.zero);
         debugPrint('🔄 Restarted current song');
@@ -477,6 +505,7 @@ class AudioPlayerManager {
   Future<void> setRepeatMode(RepeatMode mode) async {
     repeatMode.value = mode;
     try {
+      await _ensureInitialized();
       await _player.setLoopMode(mode.toLoopMode());
       await _savePlayerState();
       debugPrint('🔁 Repeat mode: \${mode.label}');
@@ -492,6 +521,7 @@ class AudioPlayerManager {
   Future<void> setShuffleEnabled(bool enabled) async {
     isShuffleEnabled.value = enabled;
     try {
+      await _ensureInitialized();
       await _player.setShuffleModeEnabled(enabled);
       await _savePlayerState();
       debugPrint('🔀 Shuffle ${enabled ? 'enabled' : 'disabled'}');

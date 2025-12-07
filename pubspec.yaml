@@ -14,7 +14,8 @@ dependencies:
   # Audio
   just_audio: ^0.9.42
   audio_session: ^0.1.18
-  just_audio_background: ^0.0.1-beta.17
+  just_audio_background:
+    path: third_party/just_audio_background
   
   # Media Query
   on_audio_query: ^2.9.0

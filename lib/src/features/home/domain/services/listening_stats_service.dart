@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,6 +27,7 @@ class ListeningStatsService {
   bool _isInitialized = false;
 
   final Stopwatch _sessionStopwatch = Stopwatch();
+  Timer? _midnightResetTimer;
   final ValueNotifier<ListeningStatsSnapshot> statsNotifier =
       ValueNotifier<ListeningStatsSnapshot>(
     const ListeningStatsSnapshot(
@@ -46,6 +48,7 @@ class ListeningStatsService {
     await _checkAndResetDaily();
     await _loadTodayStats();
     _isInitialized = true;
+    _scheduleMidnightReset();
     _emitSnapshot();
   }
 
@@ -72,7 +75,21 @@ class ListeningStatsService {
 
     await _prefs.setString(_keyLastResetDate, todayKey);
     await _saveTodayStats();
+    _scheduleMidnightReset();
     _emitSnapshot();
+  }
+
+  void _scheduleMidnightReset() {
+    _midnightResetTimer?.cancel();
+    if (!_isInitialized) return;
+
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    final waitDuration = nextMidnight.difference(now);
+
+    _midnightResetTimer = Timer(waitDuration, () async {
+      await _resetStats(_getTodayKey());
+    });
   }
 
   Future<void> _ensureFreshDay() async {
