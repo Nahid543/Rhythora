@@ -29,15 +29,10 @@ class ThemeController extends ChangeNotifier {
   }
 
   ThemeMode _parseThemeMode(String? value) {
-    switch (value) {
-      case 'light':
-        return ThemeMode.light;
-      case 'system':
-        return ThemeMode.system;
-      case 'dark':
-      default:
-        return ThemeMode.dark;
-    }
+    if (value == 'light') return ThemeMode.light;
+    if (value == 'system') return ThemeMode.system;
+    if (value == 'dark') return ThemeMode.dark;
+    return ThemeMode.dark;
   }
 
   String _themeModeToString(ThemeMode mode) {
@@ -47,7 +42,6 @@ class ThemeController extends ChangeNotifier {
       case ThemeMode.system:
         return 'system';
       case ThemeMode.dark:
-      default:
         return 'dark';
     }
   }

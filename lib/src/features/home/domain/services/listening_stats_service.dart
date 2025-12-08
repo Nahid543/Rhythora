@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/services/battery_saver_service.dart';
 
 class ListeningStatsSnapshot {
   const ListeningStatsSnapshot({
@@ -14,8 +15,6 @@ class ListeningStatsSnapshot {
   final int uniqueSongs;
 }
 
-/// Service to track user's listening statistics accurately
-/// Tracks daily listening time, total song plays, and unique songs
 class ListeningStatsService {
   static const String _keyListeningTimeSeconds = 'daily_listening_time_seconds';
   static const String _legacyKeyListeningTimeMinutes = 'daily_listening_time';
@@ -42,7 +41,6 @@ class ListeningStatsService {
   Duration _todayListeningTime = Duration.zero;
   String? _currentPlayingSongId;
 
-  /// Initialize the service
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
     await _checkAndResetDaily();
@@ -54,7 +52,6 @@ class ListeningStatsService {
 
   bool get isInitialized => _isInitialized;
 
-  /// Ensure stats are reset when a new day starts
   Future<void> _checkAndResetDaily() async {
     final lastReset = _prefs.getString(_keyLastResetDate);
     final today = _getTodayKey();
@@ -97,9 +94,9 @@ class ListeningStatsService {
     await _checkAndResetDaily();
   }
 
-  /// Start tracking a song session
   Future<void> startListening(String songId) async {
     if (!_isInitialized) return;
+    if (!BatterySaverService.instance.shouldTrackStats) return;
     await _ensureFreshDay();
 
     if (_currentPlayingSongId != null && _currentPlayingSongId != songId) {
@@ -117,19 +114,19 @@ class ListeningStatsService {
     _emitSnapshot();
   }
 
-  /// Stop tracking current session and save listening time
   Future<void> stopListening() async {
+    if (!BatterySaverService.instance.shouldTrackStats) return;
     await _finalizeSession(clearSongId: true);
   }
 
-  /// Pause tracking (when user pauses playback)
   Future<void> pauseListening() async {
+    if (!BatterySaverService.instance.shouldTrackStats) return;
     await _finalizeSession(clearSongId: false);
   }
 
-  /// Resume tracking (when user resumes playback)
   Future<void> resumeListening() async {
     if (!_isInitialized) return;
+    if (!BatterySaverService.instance.shouldTrackStats) return;
     await _ensureFreshDay();
 
     if (_currentPlayingSongId != null && !_sessionStopwatch.isRunning) {
@@ -162,7 +159,6 @@ class ListeningStatsService {
     _emitSnapshot();
   }
 
-  /// Save current stats to storage (stores seconds for precision)
   Future<void> _saveTodayStats() async {
     if (!_isInitialized) return;
     await _prefs.setInt(_keyListeningTimeSeconds, _todayListeningTime.inSeconds);
@@ -171,7 +167,6 @@ class ListeningStatsService {
     await _prefs.setString(_keyLastResetDate, _getTodayKey());
   }
 
-  /// Load today's stats from storage (supports legacy minutes key)
   Future<void> _loadTodayStats() async {
     final seconds = _prefs.getInt(_keyListeningTimeSeconds);
     if (seconds != null) {
@@ -192,7 +187,6 @@ class ListeningStatsService {
     _emitSnapshot();
   }
 
-  /// Get today's listening time (includes currently running session)
   Duration getTodayListeningTime() {
     if (_sessionStopwatch.isRunning) {
       return _todayListeningTime + _sessionStopwatch.elapsed;
@@ -200,26 +194,21 @@ class ListeningStatsService {
     return _todayListeningTime;
   }
 
-  /// Get count of songs played today (includes repeats)
   int getTodaySongPlays() => _todaySongPlays;
 
-  /// Get count of unique songs played today
   int getTodayUniqueSongsCount() => _todayUniqueSongs.length;
 
-  /// Get today's date key (format: yyyy-MM-dd)
   String _getTodayKey() {
     final now = DateTime.now();
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
-  /// Manual refresh stats (for pull-to-refresh)
   Future<void> refreshStats() async {
     if (!_isInitialized) return;
     await _checkAndResetDaily();
     await _loadTodayStats();
   }
 
-  /// Update listeners with the latest snapshot
   void _emitSnapshot() {
     statsNotifier.value = ListeningStatsSnapshot(
       listeningTime: getTodayListeningTime(),
@@ -228,7 +217,6 @@ class ListeningStatsService {
     );
   }
 
-  /// Get weekly stats (placeholder for future expansion)
   Future<Map<String, dynamic>> getWeeklyStats() async {
     return {
       'totalMinutes': getTodayListeningTime().inMinutes * 7,

@@ -4,12 +4,14 @@ class AnimatedNavBar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
   final ColorScheme colorScheme;
+  final bool animationsEnabled;
 
   const AnimatedNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
     required this.colorScheme,
+    this.animationsEnabled = true,
   });
 
   @override
@@ -19,13 +21,15 @@ class AnimatedNavBar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        boxShadow: animationsEnabled
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, -2),
+                ),
+              ]
+            : null,
       ),
       child: SafeArea(
         top: false,
@@ -44,6 +48,7 @@ class AnimatedNavBar extends StatelessWidget {
                 isSelected: currentIndex == 0,
                 onTap: () => onTap(0),
                 colorScheme: colorScheme,
+                animationsEnabled: animationsEnabled,
               ),
               _NavBarItem(
                 icon: Icons.library_music_rounded,
@@ -51,6 +56,7 @@ class AnimatedNavBar extends StatelessWidget {
                 isSelected: currentIndex == 1,
                 onTap: () => onTap(1),
                 colorScheme: colorScheme,
+                animationsEnabled: animationsEnabled,
               ),
               _NavBarItem(
                 icon: Icons.settings_rounded,
@@ -58,6 +64,7 @@ class AnimatedNavBar extends StatelessWidget {
                 isSelected: currentIndex == 2,
                 onTap: () => onTap(2),
                 colorScheme: colorScheme,
+                animationsEnabled: animationsEnabled,
               ),
             ],
           ),
@@ -73,6 +80,7 @@ class _NavBarItem extends StatefulWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final ColorScheme colorScheme;
+  final bool animationsEnabled;
 
   const _NavBarItem({
     required this.icon,
@@ -80,6 +88,7 @@ class _NavBarItem extends StatefulWidget {
     required this.isSelected,
     required this.onTap,
     required this.colorScheme,
+    required this.animationsEnabled,
   });
 
   @override
@@ -90,24 +99,28 @@ class _NavBarItemState extends State<_NavBarItem>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
-  bool _isTapped = false;
 
   @override
   void initState() {
     super.initState();
-    
+
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200),
+      duration:
+          widget.animationsEnabled ? const Duration(milliseconds: 200) : Duration.zero,
     );
 
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.12,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    ));
+    _scaleAnimation = widget.animationsEnabled
+        ? Tween<double>(
+            begin: 1.0,
+            end: 1.12,
+          ).animate(
+            CurvedAnimation(
+              parent: _controller,
+              curve: Curves.easeOutCubic,
+            ),
+          )
+        : const AlwaysStoppedAnimation<double>(1.0);
 
     if (widget.isSelected) {
       _controller.value = 1.0;
@@ -133,17 +146,15 @@ class _NavBarItemState extends State<_NavBarItem>
   }
 
   void _handleTap() {
-    setState(() => _isTapped = true);
-    
-    _controller.forward().then((_) {
-      if (mounted) {
-        Future.delayed(const Duration(milliseconds: 50), () {
-          if (mounted) {
-            setState(() => _isTapped = false);
-          }
-        });
-      }
-    });
+    if (widget.animationsEnabled) {
+      _controller.forward().then((_) {
+        if (mounted) {
+          Future.delayed(const Duration(milliseconds: 50), () {
+            if (mounted) {}
+          });
+        }
+      });
+    }
 
     widget.onTap();
   }
@@ -156,7 +167,9 @@ class _NavBarItemState extends State<_NavBarItem>
       onTap: _handleTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: widget.animationsEnabled
+            ? const Duration(milliseconds: 200)
+            : Duration.zero,
         curve: Curves.easeOutCubic,
         padding: EdgeInsets.symmetric(
           horizontal: widget.isSelected ? 18 : 12,
@@ -164,7 +177,7 @@ class _NavBarItemState extends State<_NavBarItem>
         ),
         decoration: BoxDecoration(
           color: widget.isSelected
-              ? widget.colorScheme.primaryContainer.withOpacity(0.6)
+              ? widget.colorScheme.primaryContainer.withValues(alpha: 0.6)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
@@ -187,7 +200,7 @@ class _NavBarItemState extends State<_NavBarItem>
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: widget.colorScheme.primary.withOpacity(0.25),
+                                color: widget.colorScheme.primary.withValues(alpha: 0.25),
                                 blurRadius: 16,
                                 spreadRadius: 1,
                               ),
@@ -199,7 +212,7 @@ class _NavBarItemState extends State<_NavBarItem>
                         size: 24,
                         color: widget.isSelected
                             ? widget.colorScheme.primary
-                            : widget.colorScheme.onSurface.withOpacity(0.65),
+                            : widget.colorScheme.onSurface.withValues(alpha: 0.65),
                       ),
                     ],
                   ),

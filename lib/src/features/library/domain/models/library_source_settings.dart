@@ -39,10 +39,7 @@ class LibrarySourceSettings {
   }
 
   LibrarySourceSettings activateAllMusic() {
-    return copyWith(
-      mode: LibrarySourceMode.allMusic,
-      folderPaths: [],
-    );
+    return copyWith(mode: LibrarySourceMode.allMusic, folderPaths: []);
   }
 
   LibrarySourceSettings toggleFolder(String folderPath) {
@@ -100,11 +97,13 @@ class LibrarySourceSettings {
         (e) => e.name == json['mode'],
         orElse: () => LibrarySourceMode.allMusic,
       ),
-      folderPaths: (json['folderPaths'] as List<dynamic>?)
+      folderPaths:
+          (json['folderPaths'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      hiddenFolderPaths: (json['hiddenFolderPaths'] as List<dynamic>?)
+      hiddenFolderPaths:
+          (json['hiddenFolderPaths'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
@@ -134,4 +133,8 @@ class LibrarySourceSettings {
   @override
   String toString() =>
       'LibrarySourceSettings(mode: $mode, folders: ${folderPaths.length}, hidden: ${hiddenFolderPaths.length})';
+}
+
+extension LibrarySourceSettingsX on LibrarySourceSettings {
+  bool get hasExplicitSource => isAllMusic || hasSelectedFolders;
 }

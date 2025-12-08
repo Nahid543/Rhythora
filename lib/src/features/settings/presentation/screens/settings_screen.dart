@@ -29,7 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDarkMode = true;
   Duration? _sleepTimerDuration;
   DefaultScreen _defaultScreen = DefaultScreen.home;
-  
+
   bool _batterySaverEnabled = false;
   bool _batterySaverAuto = true;
   int _batteryLevel = 100;
@@ -48,32 +48,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _onBatterySaverChanged() {
-    if (mounted) {
-      setState(() {
-        _batterySaverEnabled = BatterySaverService.instance.isEnabled;
-        _batteryLevel = BatterySaverService.instance.batteryLevel;
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _batterySaverEnabled = BatterySaverService.instance.isEnabled;
+      _batteryLevel = BatterySaverService.instance.batteryLevel;
+    });
   }
 
   Future<void> _loadPreferences() async {
     _prefs = await SharedPreferences.getInstance();
-
     final batterySaver = BatterySaverService.instance;
 
     setState(() {
       _privacyMode = _prefs.getBool('privacy_mode') ?? false;
       _isDarkMode = themeController.themeMode != ThemeMode.light;
-      
+
       final defaultScreenValue = _prefs.getString('default_screen') ?? 'home';
-      _defaultScreen = defaultScreenValue == 'library' 
-          ? DefaultScreen.library 
+      _defaultScreen = defaultScreenValue == 'library'
+          ? DefaultScreen.library
           : DefaultScreen.home;
-      
+
       _batterySaverEnabled = batterySaver.isEnabled;
       _batterySaverAuto = batterySaver.autoEnableOnLowBattery;
       _batteryLevel = batterySaver.batteryLevel;
-      
+
       _isLoading = false;
     });
   }
@@ -148,7 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleBatterySaver(bool value) async {
     HapticFeedback.lightImpact();
     await BatterySaverService.instance.toggle(value);
-    
+
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -176,9 +174,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleBatterySaverAuto(bool value) async {
     HapticFeedback.lightImpact();
     await BatterySaverService.instance.setAutoEnable(value);
-    
+
     setState(() => _batterySaverAuto = value);
-    
+
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -187,9 +185,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             const Icon(Icons.auto_mode, size: 20),
             const SizedBox(width: 12),
-            Text(value 
-                ? 'Auto Battery Saver enabled' 
-                : 'Auto Battery Saver disabled'),
+            Text(
+              value
+                  ? 'Auto Battery Saver enabled'
+                  : 'Auto Battery Saver disabled',
+            ),
           ],
         ),
         behavior: SnackBarBehavior.floating,
@@ -260,7 +260,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 16),
                   RadioListTile<DefaultScreen>(
                     title: const Text('Home'),
-                    subtitle: const Text('Start on Home screen (recommended)'),
+                    subtitle:
+                        const Text('Start on Home screen (recommended)'),
                     secondary: Icon(
                       Icons.home_rounded,
                       color: _defaultScreen == DefaultScreen.home
@@ -307,7 +308,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(width: 8),
                         FilledButton(
-                          onPressed: () => Navigator.pop(context, _defaultScreen),
+                          onPressed: () =>
+                              Navigator.pop(context, _defaultScreen),
                           child: const Text('Apply'),
                         ),
                       ],
@@ -328,7 +330,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _updateDefaultScreen(DefaultScreen screen) async {
     HapticFeedback.mediumImpact();
-    
+
     setState(() => _defaultScreen = screen);
     await _prefs.setString('default_screen', screen.name);
 
@@ -448,8 +450,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirmed == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
+        const SnackBar(
+          content: Row(
             children: [
               Icon(Icons.check_circle_rounded, size: 20),
               SizedBox(width: 12),
@@ -457,11 +459,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: const EdgeInsets.all(16),
+          duration: Duration(seconds: 2),
+          margin: EdgeInsets.all(16),
         ),
       );
     }
@@ -520,8 +519,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirmed == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
+        const SnackBar(
+          content: Row(
             children: [
               Icon(Icons.check_circle_rounded, size: 20),
               SizedBox(width: 12),
@@ -529,11 +528,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: const EdgeInsets.all(16),
+          duration: Duration(seconds: 2),
+          margin: EdgeInsets.all(16),
         ),
       );
     }
@@ -577,14 +573,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
-      SnackBar(
-        content: const Text('Opening Play Store...'),
+      const SnackBar(
+        content: Text('Opening Play Store...'),
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        margin: const EdgeInsets.all(16),
+        duration: Duration(seconds: 2),
+        margin: EdgeInsets.all(16),
       ),
     );
 
@@ -597,19 +590,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (await launchUrl(webUri, mode: LaunchMode.externalApplication)) {
         return;
       }
-    } catch (_) {
-    }
+    } catch (_) {}
 
     if (!mounted) return;
     messenger.showSnackBar(
-      SnackBar(
-        content: const Text('Could not open Play Store'),
+      const SnackBar(
+        content: Text('Could not open Play Store'),
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        margin: const EdgeInsets.all(16),
+        duration: Duration(seconds: 2),
+        margin: EdgeInsets.all(16),
       ),
     );
   }
@@ -620,6 +609,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         : 'App opens on Library screen';
   }
 
+  String _batterySaverHeaderText() {
+    if (_batterySaverEnabled) {
+      return 'Battery Saver is ON · $_batteryLevel%';
+    }
+    return 'Battery Saver is OFF · $_batteryLevel%';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -628,9 +624,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Settings'),
-        ),
         body: const Center(
           child: CircularProgressIndicator(),
         ),
@@ -638,20 +631,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Settings',
-          style: textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        elevation: 0,
-        scrolledUnderElevation: 2,
-      ),
+      // No AppBar title here; RootShell provides the page title.
       body: ListView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Row(
+              children: [
+                Icon(
+                  _batterySaverEnabled
+                      ? Icons.battery_saver
+                      : Icons.battery_full_rounded,
+                  size: 18,
+                  color: _batterySaverEnabled
+                      ? colorScheme.primary
+                      : colorScheme.onSurface.withOpacity(0.7),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _batterySaverHeaderText(),
+                  style: textTheme.labelMedium?.copyWith(
+                    color: colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           SettingsSection(
             title: 'General',
             icon: Icons.tune_rounded,
@@ -715,8 +723,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: _batterySaverEnabled
                     ? 'Reduces animations and background tasks'
                     : 'Normal performance mode',
-                icon: _batterySaverEnabled 
-                    ? Icons.battery_saver 
+                icon: _batterySaverEnabled
+                    ? Icons.battery_saver
                     : Icons.battery_full_rounded,
                 value: _batterySaverEnabled,
                 onChanged: _toggleBatterySaver,
@@ -732,11 +740,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               SettingsTile(
                 title: 'Current battery level',
-                subtitle: '$_batteryLevel% ${BatterySaverService.instance.isCharging ? '(Charging)' : ''}',
-                icon: _batteryLevel <= 20 
-                    ? Icons.battery_alert_rounded 
-                    : _batteryLevel <= 50 
-                        ? Icons.battery_3_bar_rounded 
+                subtitle:
+                    '$_batteryLevel% ${BatterySaverService.instance.isCharging ? '(Charging)' : ''}',
+                icon: _batteryLevel <= 20
+                    ? Icons.battery_alert_rounded
+                    : _batteryLevel <= 50
+                        ? Icons.battery_3_bar_rounded
                         : Icons.battery_full_rounded,
                 iconColor: _batteryLevel <= 20 ? colorScheme.error : null,
               ),

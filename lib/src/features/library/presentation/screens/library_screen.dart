@@ -35,13 +35,14 @@ class _LibraryScreenState extends State<LibraryScreen>
 
   bool _useModernView = true;
   SortType currentSort = SortType.title;
-  
+
   LibrarySourceSettings? _librarySourceSettings;
   List<MusicFolder> _availableFolders = [];
   List<Song> _currentSongs = [];
-  
+
   bool _isInitializing = true;
   bool _isRefreshing = false;
+  bool _needsSourceChoice = false;
 
   @override
   void initState() {
@@ -59,94 +60,130 @@ class _LibraryScreenState extends State<LibraryScreen>
 
   Future<void> _initializeLibrary() async {
     try {
-      // Load saved settings FIRST
       final savedSettings = await LibrarySourceService.load();
-      
-      // Load folders in parallel
       final folders = await LocalMusicLoader.instance.loadAvailableFolders();
-      
-      // Load songs with saved settings
-      final songs = await LocalMusicLoader.instance.loadSongs(
-        forceRefresh: true,
-        sourceSettings: savedSettings,
-      );
 
-      if (mounted) {
-        setState(() {
-          _librarySourceSettings = savedSettings;
-          _availableFolders = folders;
-          _currentSongs = songs;
-          _isInitializing = false;
+      final hasExplicitSource = savedSettings.isAllMusic || savedSettings.folderPaths.isNotEmpty;
+
+      if (!mounted) return;
+
+      _librarySourceSettings = savedSettings;
+      _availableFolders = folders;
+      _isInitializing = false;
+      _needsSourceChoice = !hasExplicitSource;
+
+      setState(() {});
+
+      if (hasExplicitSource) {
+        await _showLoadingWhile(() async {
+          _currentSongs = await LocalMusicLoader.instance.loadSongs(
+            forceRefresh: false,
+            sourceSettings: savedSettings,
+          );
+          widget.onSongsLoaded?.call(_currentSongs);
         });
-        
-        widget.onSongsLoaded?.call(songs);
-        
-        // Debug: Show what was restored
+
         if (savedSettings.isAllMusic) {
           debugPrint('✅ Restored: All Music mode');
         } else {
-          debugPrint('✅ Restored: ${savedSettings.folderPaths.length} folder(s) selected');
+          debugPrint(
+            '✅ Restored: ${savedSettings.folderPaths.length} folder(s) selected',
+          );
         }
+      } else {
+        debugPrint('ℹ️ First run - showing source choice');
       }
     } catch (e) {
       debugPrint('❌ Error initializing library: $e');
-      if (mounted) {
-        setState(() {
-          _librarySourceSettings = const LibrarySourceSettings();
-          _isInitializing = false;
-        });
-      }
+      if (!mounted) return;
+      _librarySourceSettings = const LibrarySourceSettings();
+      _isInitializing = false;
+      _needsSourceChoice = true;
+      setState(() {});
     }
   }
 
   Future<void> _handleRefresh() async {
-    if (_isRefreshing) return;
-    
+    if (_isRefreshing || _librarySourceSettings == null) return;
+
     setState(() => _isRefreshing = true);
-    
+
     try {
       final songs = await LocalMusicLoader.instance.loadSongs(
         forceRefresh: true,
-        sourceSettings: _librarySourceSettings,
+        sourceSettings: _librarySourceSettings!,
       );
-      
-      if (mounted) {
-        setState(() {
-          _currentSongs = songs;
-          _isRefreshing = false;
-        });
-        widget.onSongsLoaded?.call(songs);
-      }
+
+      if (!mounted) return;
+
+      _currentSongs = songs;
+      _isRefreshing = false;
+      setState(() {});
+      widget.onSongsLoaded?.call(songs);
     } catch (e) {
       debugPrint('❌ Error refreshing: $e');
+      if (!mounted) return;
+      _isRefreshing = false;
+      setState(() {});
+    }
+  }
+
+  Future<void> _showLoadingWhile(Future<void> Function() task) async {
+    if (!mounted) return;
+
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        content: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: colorScheme.primary),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                'Scanning music...\nThis may take a moment.',
+                style: textTheme.bodyMedium,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      await task();
+    } finally {
       if (mounted) {
-        setState(() => _isRefreshing = false);
+        Navigator.of(context, rootNavigator: true).pop();
       }
     }
   }
 
   Future<void> _handleFilterChange(LibrarySourceSettings newSettings) async {
-    // Save immediately
     await LibrarySourceService.save(newSettings);
-    
-    setState(() {
+
+    await _showLoadingWhile(() async {
+      final songs = await LocalMusicLoader.instance.loadSongs(
+        forceRefresh: true,
+        sourceSettings: newSettings,
+      );
+
+      if (!mounted) return;
+
+      _currentSongs = songs;
       _librarySourceSettings = newSettings;
-      _isRefreshing = true;
-    });
-
-    // Reload songs with new filter
-    final songs = await LocalMusicLoader.instance.loadSongs(
-      forceRefresh: true,
-      sourceSettings: newSettings,
-    );
-
-    if (mounted) {
-      setState(() {
-        _currentSongs = songs;
-        _isRefreshing = false;
-      });
+      _needsSourceChoice = false;
+      setState(() {});
       widget.onSongsLoaded?.call(songs);
-    }
+    });
   }
 
   Future<void> _openManageFolders() async {
@@ -159,13 +196,12 @@ class _LibraryScreenState extends State<LibraryScreen>
       ),
     );
 
-    if (result != null) {
+    if (result != null && mounted) {
       await _handleFilterChange(result);
-      
-      // Reload folders list
       final folders = await LocalMusicLoader.instance.loadAvailableFolders();
       if (mounted) {
-        setState(() => _availableFolders = folders);
+        _availableFolders = folders;
+        setState(() {});
       }
     }
   }
@@ -257,8 +293,9 @@ class _LibraryScreenState extends State<LibraryScreen>
 
   String _currentSourceLabel() {
     if (_librarySourceSettings == null) return 'Loading...';
-    
-    if (_librarySourceSettings!.isAllMusic || 
+    if (_needsSourceChoice) return 'Choose your music source';
+
+    if (_librarySourceSettings!.isAllMusic ||
         _librarySourceSettings!.folderPaths.isEmpty) {
       return 'All music on this device';
     }
@@ -275,7 +312,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     if (_isInitializing) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Library'),
+          title: Text(_currentSourceLabel(), style: textTheme.titleLarge),
         ),
         body: Center(
           child: Column(
@@ -306,7 +343,6 @@ class _LibraryScreenState extends State<LibraryScreen>
               onSettingsChanged: _handleFilterChange,
               onManageFolders: _openManageFolders,
             ),
-
           Expanded(
             child: _isRefreshing
                 ? Center(
@@ -322,6 +358,10 @@ class _LibraryScreenState extends State<LibraryScreen>
   }
 
   Widget _buildContent() {
+    if (_needsSourceChoice) {
+      return _buildSourceChoice();
+    }
+
     if (_currentSongs.isEmpty) {
       return _buildEmptyState();
     }
@@ -352,34 +392,16 @@ class _LibraryScreenState extends State<LibraryScreen>
     TextTheme textTheme,
   ) {
     return AppBar(
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.library_music_rounded, color: colorScheme.primary),
-              const SizedBox(width: 12),
-              Text(
-                'Library',
-                style: textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ],
+      title: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        child: Text(
+          _currentSourceLabel(),
+          key: ValueKey(_currentSourceLabel()),
+          style: textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
           ),
-          const SizedBox(height: 2),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: Text(
-              _currentSourceLabel(),
-              key: ValueKey(_currentSourceLabel()),
-              style: textTheme.labelSmall?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.7),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
       centerTitle: false,
       elevation: 0,
@@ -414,10 +436,56 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
   }
 
+  Widget _buildSourceChoice() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.library_music_rounded,
+              size: 56,
+              color: colorScheme.primary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Choose your music source',
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Scan all music on this device or start with specific folders.',
+              textAlign: TextAlign.center,
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface.withOpacity(0.7),
+              ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: () => _handleFilterChange(const LibrarySourceSettings()),
+              child: const Text('Scan all music'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _openManageFolders,
+              child: const Text('Choose folders'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmptyState() {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    
+
     final isFiltered = _librarySourceSettings?.isAllMusic == false &&
         _librarySourceSettings!.hasSelectedFolders;
 
@@ -449,11 +517,8 @@ class _LibraryScreenState extends State<LibraryScreen>
           if (isFiltered) ...[
             const SizedBox(height: 24),
             FilledButton.tonal(
-              onPressed: () async {
-                await _handleFilterChange(
-                  const LibrarySourceSettings(),
-                );
-              },
+              onPressed: () =>
+                  _handleFilterChange(const LibrarySourceSettings()),
               child: const Text('Show All Music'),
             ),
           ],

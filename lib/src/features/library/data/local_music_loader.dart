@@ -9,6 +9,7 @@ import '../domain/entities/song.dart';
 import '../domain/entities/music_folder.dart';
 import '../domain/models/library_source_settings.dart';
 import 'dummy_library.dart';
+import '../../../core/services/battery_saver_service.dart';
 
 class LocalMusicLoader {
   LocalMusicLoader._internal();
@@ -255,6 +256,10 @@ class LocalMusicLoader {
   }
 
   Future<String?> _cacheArtworkIfNeeded(SongModel songModel) async {
+    if (!BatterySaverService.instance.shouldLoadAlbumArt) {
+      return null;
+    }
+
     if (kIsWeb || !Platform.isAndroid) return null;
     final songId = songModel.id;
     if (_artworkPathCache.containsKey(songId)) {

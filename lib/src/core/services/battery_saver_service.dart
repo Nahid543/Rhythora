@@ -13,6 +13,7 @@ class BatterySaverService extends ChangeNotifier {
   int _batteryLevel = 100;
   bool _isCharging = false;
   StreamSubscription<BatteryState>? _batterySubscription;
+  Timer? _levelTimer;
 
   bool get isEnabled => _isEnabled;
   bool get autoEnableOnLowBattery => _autoEnableOnLowBattery;
@@ -61,7 +62,8 @@ class BatterySaverService extends ChangeNotifier {
       });
 
       // Periodic battery level check (every 5 minutes)
-      Timer.periodic(const Duration(minutes: 5), (timer) async {
+      _levelTimer?.cancel();
+      _levelTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
         _batteryLevel = await battery.batteryLevel;
         _checkAutoEnableBatterySaver();
       });
@@ -116,6 +118,7 @@ class BatterySaverService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _levelTimer?.cancel();
     _batterySubscription?.cancel();
     super.dispose();
   }

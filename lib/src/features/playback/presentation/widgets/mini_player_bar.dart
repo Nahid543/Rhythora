@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'dart:ui';
@@ -23,7 +22,7 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
-  
+
   final AudioPlayerManager _player = AudioPlayerManager.instance;
 
   @override
@@ -38,21 +37,25 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 1.5),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(
+      CurvedAnimation(
+        parent: _slideController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
 
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeIn,
-    ));
+    ).animate(
+      CurvedAnimation(
+        parent: _slideController,
+        curve: Curves.easeIn,
+      ),
+    );
 
     _player.currentSong.addListener(_onSongChanged);
-    
+
     if (_player.currentSong.value != null) {
       _slideController.forward();
     }
@@ -61,7 +64,8 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
   void _onSongChanged() {
     if (_player.currentSong.value != null && !_slideController.isCompleted) {
       _slideController.forward();
-    } else if (_player.currentSong.value == null && _slideController.isCompleted) {
+    } else if (_player.currentSong.value == null &&
+        _slideController.isCompleted) {
       _slideController.reverse();
     }
   }
@@ -82,7 +86,16 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
           return const SizedBox.shrink();
         }
 
-        return _buildMiniPlayer(context, currentSong);
+        // Extra safety: hide if duration is invalid/zero
+        return ValueListenableBuilder<Duration>(
+          valueListenable: _player.duration,
+          builder: (context, duration, __) {
+            if (duration.inMilliseconds <= 0) {
+              return const SizedBox.shrink();
+            }
+            return _buildMiniPlayer(context, currentSong);
+          },
+        );
       },
     );
   }
@@ -147,7 +160,6 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildProgressBar(colorScheme),
-
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -163,16 +175,21 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
                           ),
                           child: Row(
                             children: [
-                              _buildArtwork(song, artworkId, colorScheme, isTablet),
-                              
-                              SizedBox(width: isTablet ? 16 : 14),
-
-                              Expanded(
-                                child: _buildSongInfo(song, colorScheme, textTheme),
+                              _buildArtwork(
+                                song,
+                                artworkId,
+                                colorScheme,
+                                isTablet,
                               ),
-
+                              SizedBox(width: isTablet ? 16 : 14),
+                              Expanded(
+                                child: _buildSongInfo(
+                                  song,
+                                  colorScheme,
+                                  textTheme,
+                                ),
+                              ),
                               SizedBox(width: isTablet ? 16 : 12),
-
                               _buildControls(colorScheme, isTablet),
                             ],
                           ),
@@ -297,7 +314,11 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
     );
   }
 
-  Widget _buildSongInfo(Song song, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildSongInfo(
+    Song song,
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -361,14 +382,14 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
           colorScheme: colorScheme,
           isPrimary: false,
         ),
-        
         SizedBox(width: isTablet ? 10 : 8),
-
         ValueListenableBuilder<bool>(
           valueListenable: _player.isPlaying,
           builder: (context, isPlaying, _) {
             return _CircleButton(
-              icon: isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              icon: isPlaying
+                  ? Icons.pause_rounded
+                  : Icons.play_arrow_rounded,
               size: isTablet ? 52 : 48,
               iconSize: isTablet ? 28 : 26,
               onPressed: () {
@@ -383,9 +404,7 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
             );
           },
         ),
-
         SizedBox(width: isTablet ? 10 : 8),
-
         _CircleButton(
           icon: Icons.skip_next_rounded,
           size: isTablet ? 42 : 38,
@@ -480,7 +499,8 @@ class _CircleButtonState extends State<_CircleButton>
                 boxShadow: widget.isPrimary
                     ? [
                         BoxShadow(
-                          color: widget.colorScheme.primary.withOpacity(0.4),
+                          color:
+                              widget.colorScheme.primary.withOpacity(0.4),
                           blurRadius: 12,
                           spreadRadius: 1,
                           offset: const Offset(0, 4),

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -46,12 +45,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
-    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+        );
 
     _fadeController = AnimationController(
       vsync: this,
@@ -208,7 +205,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
 
   Future<void> _checkFirstTimeGesture() async {
     final prefs = await SharedPreferences.getInstance();
-    final hasSeenGesture = prefs.getBool('has_seen_now_playing_gesture') ?? false;
+    final hasSeenGesture =
+        prefs.getBool('has_seen_now_playing_gesture') ?? false;
 
     if (!hasSeenGesture && mounted) {
       await Future.delayed(const Duration(milliseconds: 1200));
@@ -531,8 +529,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                         return ScaleTransition(
                           scale: animation,
                           child: RotationTransition(
-                            turns: Tween<double>(begin: 0.8, end: 1.0)
-                                .animate(animation),
+                            turns: Tween<double>(
+                              begin: 0.8,
+                              end: 1.0,
+                            ).animate(animation),
                             child: child,
                           ),
                         );
@@ -581,6 +581,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
       ],
     );
   }
+
   Widget _buildContent(
     Song song,
     ColorScheme colorScheme,
@@ -592,41 +593,48 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
         final viewPadding = MediaQuery.of(context).viewPadding;
         final double usableHeight =
             constraints.maxHeight - viewPadding.top - viewPadding.bottom;
-        final double fallbackHeight =
-            usableHeight > 0 ? usableHeight : constraints.maxHeight;
+        final double fallbackHeight = usableHeight > 0
+            ? usableHeight
+            : constraints.maxHeight;
         final bool isCompactHeight = fallbackHeight < 720;
         final bool isUltraCompactHeight = fallbackHeight < 640;
 
-        final double horizontalPadding =
-            isTablet ? 64 : (isCompactHeight ? 16 : 20);
-        final double topSpacing =
-            isTablet ? 32 : (isCompactHeight ? 18 : 24);
-        final double sectionsGap =
-            isTablet ? 36 : (isCompactHeight ? 18 : 28);
+        final double horizontalPadding = isTablet
+            ? 64
+            : (isCompactHeight ? 16 : 20);
+        final double topSpacing = isTablet ? 32 : (isCompactHeight ? 18 : 24);
+        final double sectionsGap = isTablet ? 36 : (isCompactHeight ? 18 : 28);
         final double titleGap = isCompactHeight ? 8 : 10;
         final double badgeGap = isCompactHeight ? 12 : 16;
         final double sliderGap = isCompactHeight ? 14 : 20;
         final double controlsGap = isCompactHeight ? 12 : 16;
 
         final double availableWidth =
-            (constraints.maxWidth - (horizontalPadding * 2))
-                .clamp(0.0, constraints.maxWidth);
+            (constraints.maxWidth - (horizontalPadding * 2)).clamp(
+              0.0,
+              constraints.maxWidth,
+            );
         final double fallbackArtworkSize = isTablet
             ? 420
             : constraints.maxWidth * (isUltraCompactHeight ? 0.76 : 0.84);
-        final double maxArtworkHeight = fallbackHeight *
+        final double maxArtworkHeight =
+            fallbackHeight *
             (isTablet ? 0.55 : (isUltraCompactHeight ? 0.4 : 0.48));
-        final double resolvedArtworkSize = fallbackArtworkSize < maxArtworkHeight
+        final double resolvedArtworkSize =
+            fallbackArtworkSize < maxArtworkHeight
             ? fallbackArtworkSize
             : maxArtworkHeight;
-        final double artworkSize = resolvedArtworkSize
-            .clamp(220.0, isTablet ? 520.0 : 360.0);
+        final double artworkSize = resolvedArtworkSize.clamp(
+          220.0,
+          isTablet ? 520.0 : 360.0,
+        );
         final double queueWidthCap = isTablet ? 420.0 : 280.0;
         final double queueWidth = availableWidth > 0
             ? (availableWidth < queueWidthCap ? availableWidth : queueWidthCap)
             : queueWidthCap;
-        final double titleFontSize =
-            isTablet ? 28 : (isCompactHeight ? 20 : 22);
+        final double titleFontSize = isTablet
+            ? 28
+            : (isCompactHeight ? 20 : 22);
 
         return SafeArea(
           child: Padding(
@@ -784,7 +792,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
       },
     );
   }
-
 }
 
 class _QueueButton extends StatefulWidget {
@@ -816,9 +823,10 @@ class _QueueButtonState extends State<_QueueButton>
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.92).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.92,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -841,8 +849,9 @@ class _QueueButtonState extends State<_QueueButton>
       animation: _scaleAnimation,
       builder: (context, child) {
         final bool hasFiniteWidth = widget.maxWidth.isFinite;
-        final double maxWidth =
-            hasFiniteWidth ? widget.maxWidth : double.infinity;
+        final double maxWidth = hasFiniteWidth
+            ? widget.maxWidth
+            : double.infinity;
         double minWidth = hasFiniteWidth ? widget.maxWidth * 0.65 : 0.0;
         if (hasFiniteWidth && minWidth > widget.maxWidth) {
           minWidth = widget.maxWidth;

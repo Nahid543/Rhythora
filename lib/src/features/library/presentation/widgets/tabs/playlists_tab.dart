@@ -110,7 +110,6 @@ class _PlaylistsTabState extends State<PlaylistsTab>
 
   void _showCreatePlaylistDialog(BuildContext context) {
     final controller = TextEditingController();
-    final colorScheme = Theme.of(context).colorScheme;
 
     showDialog(
       context: context,

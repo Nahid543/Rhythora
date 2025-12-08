@@ -1,5 +1,4 @@
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../domain/entities/song.dart';
@@ -10,6 +9,7 @@ import '../library_stats_header.dart';
 import '../song_list_item.dart';
 import '../song_grid_item.dart';
 import '../song_options_bottom_sheet.dart';
+import '../../../../../core/services/battery_saver_service.dart';
 
 class SongsTab extends StatefulWidget {
   final List<Song> songs;
@@ -128,6 +128,7 @@ class _SongsTabState extends State<SongsTab>
     final textTheme = theme.textTheme;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
+    final animationsEnabled = BatterySaverService.instance.shouldUseAnimations;
 
     final filteredSongs = _getFilteredAndSortedSongs();
 
@@ -142,27 +143,43 @@ class _SongsTabState extends State<SongsTab>
       color: colorScheme.primary,
       child: Column(
         children: [
-          FadeTransition(
-            opacity: _fadeAnimation,
-            child: LibrarySearchBar(
-              controller: _searchController,
-              searchQuery: _searchQuery,
-              onClear: () => _searchController.clear(),
-              colorScheme: colorScheme,
-              textTheme: textTheme,
-            ),
-          ),
+          animationsEnabled
+              ? FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: LibrarySearchBar(
+                    controller: _searchController,
+                    searchQuery: _searchQuery,
+                    onClear: () => _searchController.clear(),
+                    colorScheme: colorScheme,
+                    textTheme: textTheme,
+                  ),
+                )
+              : LibrarySearchBar(
+                  controller: _searchController,
+                  searchQuery: _searchQuery,
+                  onClear: () => _searchController.clear(),
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                ),
 
-          FadeTransition(
-            opacity: _fadeAnimation,
-            child: LibraryStatsHeader(
-              songCount: widget.songs.length,
-              totalDuration: totalDuration,
-              artistCount: uniqueArtists,
-              colorScheme: colorScheme,
-              textTheme: textTheme,
-            ),
-          ),
+          animationsEnabled
+              ? FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: LibraryStatsHeader(
+                    songCount: widget.songs.length,
+                    totalDuration: totalDuration,
+                    artistCount: uniqueArtists,
+                    colorScheme: colorScheme,
+                    textTheme: textTheme,
+                  ),
+                )
+              : LibraryStatsHeader(
+                  songCount: widget.songs.length,
+                  totalDuration: totalDuration,
+                  artistCount: uniqueArtists,
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                ),
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -195,9 +212,20 @@ class _SongsTabState extends State<SongsTab>
                 ? _buildNoResultsState(colorScheme, textTheme)
                 : _currentView == LibraryViewType.list
                     ? _buildListView(
-                        filteredSongs, widget.songs, colorScheme, textTheme)
-                    : _buildGridView(filteredSongs, widget.songs, colorScheme,
-                        textTheme, isTablet),
+                        filteredSongs,
+                        widget.songs,
+                        colorScheme,
+                        textTheme,
+                        animationsEnabled,
+                      )
+                    : _buildGridView(
+                        filteredSongs,
+                        widget.songs,
+                        colorScheme,
+                        textTheme,
+                        isTablet,
+                        animationsEnabled,
+                      ),
           ),
         ],
       ),
@@ -209,6 +237,7 @@ class _SongsTabState extends State<SongsTab>
     List<Song> allSongs,
     ColorScheme colorScheme,
     TextTheme textTheme,
+    bool animationsEnabled,
   ) {
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
@@ -218,6 +247,17 @@ class _SongsTabState extends State<SongsTab>
         final song = filteredSongs[index];
         final fullIndex = allSongs.indexWhere((s) => s.id == song.id);
         final queueIndex = fullIndex == -1 ? index : fullIndex;
+
+        if (!animationsEnabled) {
+          return SongListItem(
+            song: song,
+            onTap: () => widget.onSongSelected(song, allSongs, queueIndex),
+            onLongPress: () => _showSongOptions(song),
+            colorScheme: colorScheme,
+            textTheme: textTheme,
+            index: index,
+          );
+        }
 
         return TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.0, end: 1.0),
@@ -250,6 +290,7 @@ class _SongsTabState extends State<SongsTab>
     ColorScheme colorScheme,
     TextTheme textTheme,
     bool isTablet,
+    bool animationsEnabled,
   ) {
     return GridView.builder(
       physics: const BouncingScrollPhysics(),
@@ -265,6 +306,16 @@ class _SongsTabState extends State<SongsTab>
         final song = filteredSongs[index];
         final fullIndex = allSongs.indexWhere((s) => s.id == song.id);
         final queueIndex = fullIndex == -1 ? index : fullIndex;
+
+        if (!animationsEnabled) {
+          return SongGridItem(
+            song: song,
+            onTap: () => widget.onSongSelected(song, allSongs, queueIndex),
+            onLongPress: () => _showSongOptions(song),
+            colorScheme: colorScheme,
+            textTheme: textTheme,
+          );
+        }
 
         return TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.0, end: 1.0),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -10,8 +11,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../library/domain/entities/song.dart';
 import '../domain/repeat_mode.dart';
-
 import '../../../app/rhythora_app.dart' show listeningStatsService;
+import '../../../core/services/battery_saver_service.dart';
 
 class AudioPlayerManager {
   AudioPlayerManager._internal() {
@@ -32,17 +33,16 @@ class AudioPlayerManager {
   String? _currentTrackingSongId;
 
   final ValueNotifier<bool> isPlaying = ValueNotifier<bool>(false);
-  final ValueNotifier<Duration> position = ValueNotifier<Duration>(
-    Duration.zero,
-  );
-  final ValueNotifier<Duration> duration = ValueNotifier<Duration>(
-    Duration.zero,
-  );
-  final ValueNotifier<RepeatMode> repeatMode = ValueNotifier<RepeatMode>(
-    RepeatMode.off,
-  );
-  final ValueNotifier<bool> isShuffleEnabled = ValueNotifier<bool>(false);
-  final ValueNotifier<Song?> currentSong = ValueNotifier<Song?>(null);
+  final ValueNotifier<Duration> position =
+      ValueNotifier<Duration>(Duration.zero);
+  final ValueNotifier<Duration> duration =
+      ValueNotifier<Duration>(Duration.zero);
+  final ValueNotifier<RepeatMode> repeatMode =
+      ValueNotifier<RepeatMode>(RepeatMode.off);
+  final ValueNotifier<bool> isShuffleEnabled =
+      ValueNotifier<bool>(false);
+  final ValueNotifier<Song?> currentSong =
+      ValueNotifier<Song?>(null);
   final ValueNotifier<int> currentIndex = ValueNotifier<int>(0);
 
   Function(Song song)? onSongChanged;
@@ -59,7 +59,9 @@ class AudioPlayerManager {
       });
 
       session.interruptionEventStream.listen((event) async {
-        debugPrint('[AudioPlayer] Interruption: ${event.type} (begin: ${event.begin})');
+        debugPrint(
+          '[AudioPlayer] Interruption: ${event.type} (begin: ${event.begin})',
+        );
         if (event.begin) {
           await pause();
         }
@@ -85,17 +87,15 @@ class AudioPlayerManager {
       });
 
       _player.durationStream.listen((dur) {
-        if (dur != null) {
-          duration.value = dur;
-        }
+        duration.value = dur ?? Duration.zero;
       });
 
       _player.currentIndexStream.listen((index) async {
-        if (index == null || _currentQueue == null) {
-          return;
-        }
+        if (index == null || _currentQueue == null) return;
 
-        debugPrint('[AudioPlayer] Index changed to: $index (manual: $_isManualSeek, restoring: $_isRestoringState)');
+        debugPrint(
+          '[AudioPlayer] Index changed to: $index (manual: $_isManualSeek, restoring: $_isRestoringState)',
+        );
 
         currentIndex.value = index;
 
@@ -111,21 +111,28 @@ class AudioPlayerManager {
       });
 
       _player.positionDiscontinuityStream.listen((discontinuity) async {
-        debugPrint('[AudioPlayer] Position discontinuity: ${discontinuity.reason}');
+        debugPrint(
+          '[AudioPlayer] Position discontinuity: ${discontinuity.reason}',
+        );
 
-        if (discontinuity.reason == PositionDiscontinuityReason.autoAdvance) {
+        if (discontinuity.reason ==
+            PositionDiscontinuityReason.autoAdvance) {
           final index = _player.currentIndex;
-          if (index != null && _currentQueue != null && !_isRestoringState) {
+          if (index != null &&
+              _currentQueue != null &&
+              !_isRestoringState) {
             debugPrint('[AudioPlayer] Auto-advance confirmed: $index');
             await _handleSongChange(index);
           }
         }
       });
 
+      // ✅ FIXED: Queue completion - PAUSE on last song, KEEP currentSong visible
       _player.processingStateStream.listen((state) async {
         debugPrint('[AudioPlayer] Processing state: $state');
 
         if (state == ProcessingState.completed) {
+          // Stop stats tracking for completed song
           if (_currentTrackingSongId != null) {
             await listeningStatsService.stopListening();
             _currentTrackingSongId = null;
@@ -133,8 +140,15 @@ class AudioPlayerManager {
           }
 
           if (repeatMode.value == RepeatMode.off) {
-            debugPrint('[AudioPlayer] Queue completed');
-            isPlaying.value = false;
+            debugPrint('[AudioPlayer] Queue completed (no repeat) - pausing on last song');
+            
+            // ✅ FIX 1: Just pause - DON'T clear currentSong/queue for miniplayer
+            await _player.pause();  // playingStream handles isPlaying.value = false
+            
+            // ✅ FIX 2: Reset UI state for clean paused appearance
+            duration.value = Duration.zero;
+            position.value = Duration.zero;
+            
             onQueueEnded?.call();
           }
         }
@@ -171,7 +185,7 @@ class AudioPlayerManager {
           repeatMode.value = RepeatMode.values.byName(repeatValue);
           await _player.setLoopMode(repeatMode.value.toLoopMode());
         } catch (e) {
-          debugPrint('⚠️ Invalid repeat mode: \$repeatValue');
+          debugPrint('⚠️ Invalid repeat mode: $repeatValue');
         }
       }
 
@@ -180,10 +194,10 @@ class AudioPlayerManager {
       await _player.setShuffleModeEnabled(shuffleEnabled);
 
       debugPrint(
-        '✅ Restored: repeat=\${repeatMode.value.name}, shuffle=\$shuffleEnabled',
+        '✅ Restored: repeat=${repeatMode.value.name}, shuffle=$shuffleEnabled',
       );
     } catch (e) {
-      debugPrint('⚠️ Error restoring player state: \$e');
+      debugPrint('⚠️ Error restoring player state: $e');
     }
   }
 
@@ -192,16 +206,18 @@ class AudioPlayerManager {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('repeat_mode', repeatMode.value.name);
       await prefs.setBool('shuffle_enabled', isShuffleEnabled.value);
-      debugPrint('💾 Saved player state');
+      debugPrint('Saved player state');
     } catch (e) {
-      debugPrint('❌ Error saving player state: \$e');
+      debugPrint('❌ Error saving player state: $e');
     }
   }
 
   Future<void> _handleSongChange(int index) async {
-    if (_currentQueue == null || index < 0 || index >= _currentQueue!.length) {
+    if (_currentQueue == null ||
+        index < 0 ||
+        index >= _currentQueue!.length) {
       debugPrint(
-        '⚠️ Invalid index: \$index (queue length: \${_currentQueue?.length})',
+        '⚠️ Invalid index: $index (queue length: ${_currentQueue?.length})',
       );
       return;
     }
@@ -221,10 +237,12 @@ class AudioPlayerManager {
       if (isPlaying.value && !_isRestoringState) {
         _currentTrackingSongId = newSong.id;
         await listeningStatsService.startListening(newSong.id);
-        debugPrint('🎵 Stats: Started tracking \${newSong.title}');
+        debugPrint('🎵 Stats: Started tracking ${newSong.title}');
       }
 
-      debugPrint('✅ Song changed to: \${newSong.title} (index: \$index)');
+      debugPrint(
+        '✅ Song changed to: ${newSong.title} (index: $index)',
+      );
       onSongChanged?.call(newSong);
     }
   }
@@ -233,13 +251,12 @@ class AudioPlayerManager {
     try {
       if (_defaultArtworkPath != null) {
         final cachedFile = File(_defaultArtworkPath!);
-        if (cachedFile.existsSync()) {
-          return;
-        }
+        if (cachedFile.existsSync()) return;
       }
 
       final directory = await getApplicationDocumentsDirectory();
-      final artworkFile = File('${directory.path}/default_artwork.png');
+      final artworkFile =
+          File('${directory.path}/default_artwork.png');
 
       if (!artworkFile.existsSync()) {
         final ByteData data = await rootBundle.load(
@@ -257,6 +274,14 @@ class AudioPlayerManager {
   }
 
   Uri? _resolveArtworkUri(Song song) {
+    if (!BatterySaverService.instance.shouldLoadAlbumArt) {
+      if (_defaultArtworkPath != null &&
+          _defaultArtworkPath!.isNotEmpty) {
+        return Uri.file(_defaultArtworkPath!);
+      }
+      return null;
+    }
+
     final artPath = song.albumArtPath;
     if (artPath != null && artPath.isNotEmpty) {
       final parsed = Uri.tryParse(artPath);
@@ -269,7 +294,8 @@ class AudioPlayerManager {
       return Uri.file(artPath);
     }
 
-    if (_defaultArtworkPath != null && _defaultArtworkPath!.isNotEmpty) {
+    if (_defaultArtworkPath != null &&
+        _defaultArtworkPath!.isNotEmpty) {
       return Uri.file(_defaultArtworkPath!);
     }
 
@@ -298,7 +324,7 @@ class AudioPlayerManager {
 
       if (startIndex < 0 || startIndex >= songsToPlay.length) {
         debugPrint(
-          '❌ Invalid start index: \$startIndex (queue: \${songsToPlay.length})',
+          '❌ Invalid start index: $startIndex (queue: ${songsToPlay.length})',
         );
         _isRestoringState = false;
         return;
@@ -311,18 +337,19 @@ class AudioPlayerManager {
       _currentPlaylist = ConcatenatingAudioSource(
         useLazyPreparation: true,
         shuffleOrder: DefaultShuffleOrder(),
-        children: songsToPlay.map((s) => _createAudioSource(s)).toList(),
+        children:
+            songsToPlay.map((s) => _createAudioSource(s)).toList(),
       );
 
       await _player.setAudioSource(
         _currentPlaylist!,
         initialIndex: startIndex,
         initialPosition: Duration.zero,
-        preload: true,
+        preload: BatterySaverService.instance.shouldLoadAlbumArt,
       );
 
       debugPrint(
-        '✅ Queue set: \${songsToPlay.length} songs at \$startIndex (autoPlay: \$autoPlay)',
+        '✅ Queue set: ${songsToPlay.length} songs at $startIndex (autoPlay: $autoPlay)',
       );
 
       if (autoPlay && !isRestoring) {
@@ -331,7 +358,7 @@ class AudioPlayerManager {
 
       _isRestoringState = false;
     } catch (e) {
-      debugPrint('❌ Error setting audio source: \$e');
+      debugPrint('❌ Error setting audio source: $e');
       _isRestoringState = false;
     }
   }
@@ -339,7 +366,9 @@ class AudioPlayerManager {
   AudioSource _createAudioSource(Song song) {
     final mediaItem = _createMediaItem(song);
 
-    if (song.isLocalFile && song.filePath != null && song.filePath!.isNotEmpty) {
+    if (song.isLocalFile &&
+        song.filePath != null &&
+        song.filePath!.isNotEmpty) {
       final parsed = Uri.tryParse(song.filePath!);
       if (parsed != null && parsed.scheme.isNotEmpty) {
         return AudioSource.uri(parsed, tag: mediaItem);
@@ -361,7 +390,10 @@ class AudioPlayerManager {
       album: song.album,
       duration: song.duration,
       artUri: artworkUri,
-      extras: <String, dynamic>{'filePath': song.filePath, 'songId': song.id},
+      extras: <String, dynamic>{
+        'filePath': song.filePath,
+        'songId': song.id,
+      },
     );
   }
 
@@ -378,8 +410,12 @@ class AudioPlayerManager {
       if (currentSong.value != null &&
           _currentTrackingSongId != currentSong.value!.id) {
         _currentTrackingSongId = currentSong.value!.id;
-        await listeningStatsService.startListening(currentSong.value!.id);
-        debugPrint('🎵 Stats: Started tracking \${currentSong.value!.title}');
+        await listeningStatsService.startListening(
+          currentSong.value!.id,
+        );
+        debugPrint(
+          '🎵 Stats: Started tracking ${currentSong.value!.title}',
+        );
       } else if (_currentTrackingSongId != null) {
         await listeningStatsService.resumeListening();
         debugPrint('▶️ Stats: Resumed tracking');
@@ -387,7 +423,7 @@ class AudioPlayerManager {
 
       debugPrint('▶️ Playing');
     } catch (e) {
-      debugPrint('❌ Error on play: \$e');
+      debugPrint('❌ Error on play: $e');
     }
   }
 
@@ -403,7 +439,7 @@ class AudioPlayerManager {
 
       debugPrint('⏸️ Paused');
     } catch (e) {
-      debugPrint('❌ Error on pause: \$e');
+      debugPrint('❌ Error on pause: $e');
     }
   }
 
@@ -420,7 +456,7 @@ class AudioPlayerManager {
 
       debugPrint('⏹️ Stopped');
     } catch (e) {
-      debugPrint('❌ Error on stop: \$e');
+      debugPrint('❌ Error on stop: $e');
     }
   }
 
@@ -429,7 +465,7 @@ class AudioPlayerManager {
       await _ensureInitialized();
       await _player.seek(newPosition);
     } catch (e) {
-      debugPrint('❌ Error on seek: \$e');
+      debugPrint('❌ Error on seek: $e');
     }
   }
 
@@ -458,7 +494,7 @@ class AudioPlayerManager {
 
       debugPrint('⏭️ Skipped to next');
     } catch (e) {
-      debugPrint('❌ Error skipping to next: \$e');
+      debugPrint('❌ Error skipping to next: $e');
     }
   }
 
@@ -493,7 +529,7 @@ class AudioPlayerManager {
 
       debugPrint('⏮️ Skipped to previous');
     } catch (e) {
-      debugPrint('❌ Error skipping to previous: \$e');
+      debugPrint('❌ Error skipping to previous: $e');
     }
   }
 
@@ -508,9 +544,9 @@ class AudioPlayerManager {
       await _ensureInitialized();
       await _player.setLoopMode(mode.toLoopMode());
       await _savePlayerState();
-      debugPrint('🔁 Repeat mode: \${mode.label}');
+      debugPrint('🔁 Repeat mode: ${mode.label}');
     } catch (e) {
-      debugPrint('❌ Error setting loop mode: \$e');
+      debugPrint('❌ Error setting loop mode: $e');
     }
   }
 
@@ -524,9 +560,11 @@ class AudioPlayerManager {
       await _ensureInitialized();
       await _player.setShuffleModeEnabled(enabled);
       await _savePlayerState();
-      debugPrint('🔀 Shuffle ${enabled ? 'enabled' : 'disabled'}');
+      debugPrint(
+        '🔀 Shuffle ${enabled ? 'enabled' : 'disabled'}',
+      );
     } catch (e) {
-      debugPrint('❌ Error setting shuffle: \$e');
+      debugPrint('❌ Error setting shuffle: $e');
     }
   }
 

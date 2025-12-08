@@ -28,12 +28,10 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   List<Song> _queue = const [];
   int _currentSongIndex = -1;
 
-  List<int> _shuffledIndices = [];
   List<Song> _recentlyPlayed = [];
   List<Song> _allLibrarySongs = [];
 
   DateTime? _lastBackPress;
-  bool _wasPlayingBeforeBackground = false;
 
   final AudioPlayerManager _player = AudioPlayerManager.instance;
 
@@ -99,7 +97,6 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
 
     switch (state) {
       case AppLifecycleState.paused:
-        _wasPlayingBeforeBackground = _player.isPlaying.value;
         _saveState();
         break;
       case AppLifecycleState.resumed:
@@ -143,7 +140,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
       await prefs.setInt('playback_position', position.inMilliseconds);
       await prefs.setBool('was_playing', _player.isPlaying.value);
 
-      debugPrint('💾 State saved');
+      debugPrint('State saved');
     } catch (e) {
       debugPrint('❌ Error saving state: $e');
     }
@@ -156,6 +153,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
       final recentJson = prefs.getString('recently_played');
       if (recentJson != null) {
         final List<dynamic> decoded = jsonDecode(recentJson);
+        if (!mounted) return;
         setState(() {
           _recentlyPlayed = decoded.map((json) => Song.fromJson(json)).toList();
         });
@@ -176,6 +174,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
           return;
         }
 
+        if (!mounted) return;
         setState(() {
           _queue = queue;
           _currentSongIndex = songIndex;
@@ -227,7 +226,6 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     setState(() {
       _queue = queue;
       _currentSongIndex = index;
-      _shuffledIndices = [];
     });
 
     _player.setSong(
@@ -414,11 +412,13 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
     }
 
     final batterySaver = BatterySaverService.instance;
-    final showBatteryChip = batterySaver.isEnabled;
+    final animationsEnabled = batterySaver.shouldUseAnimations;
+    final showBatteryChip =
+        batterySaver.isEnabled && _currentIndex == 0; // only on Home
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
           final shouldPop = await _onWillPop();
           if (shouldPop && mounted) {
@@ -431,42 +431,55 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
         body: SafeArea(
           child: Column(
             children: [
-              if (showBatteryChip)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.battery_saver,
-                            size: 16,
-                            color: colorScheme.primary,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Row(
+                  children: [
+                    Text(
+                      _currentIndex == 0
+                          ? 'Home'
+                          : _currentIndex == 1
+                              ? 'Library'
+                              : 'Settings',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Battery saver',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                    ),
+                    const Spacer(),
+                    if (showBatteryChip)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.battery_saver,
+                              size: 14,
                               color: colorScheme.primary,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 4),
+                            Text(
+                              'Battery saver',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
+                  ],
                 ),
+              ),
+              const SizedBox(height: 4),
               Expanded(child: _buildCurrentTab()),
               MiniPlayerBar(onTap: _openNowPlaying),
             ],
@@ -476,6 +489,7 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
           currentIndex: _currentIndex,
           onTap: (index) => setState(() => _currentIndex = index),
           colorScheme: colorScheme,
+          animationsEnabled: animationsEnabled,
         ),
       ),
     );
