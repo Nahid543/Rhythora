@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../../library/domain/entities/song.dart';
+import '../../../library/data/local_music_loader.dart';
+import '../../../library/domain/models/library_source_settings.dart';
+import '../../../library/domain/models/library_source_service.dart';
 import '../../domain/mix_generator.dart';
 
 class MixDetailScreen extends StatefulWidget {
@@ -24,8 +28,11 @@ class MixDetailScreen extends StatefulWidget {
 
 class _MixDetailScreenState extends State<MixDetailScreen> with TickerProviderStateMixin {
   late List<Song> _mixSongs;
+  late List<Song> _librarySongs;
   late MixInfo _mixInfo;
   bool _isGenerating = true;
+  bool _isLoadingLibrary = false;
+  bool _hasTriedLibraryLoad = false;
   
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -43,6 +50,7 @@ class _MixDetailScreenState extends State<MixDetailScreen> with TickerProviderSt
       curve: Curves.easeInOut,
     );
     
+    _librarySongs = List<Song>.from(widget.allSongs);
     _mixInfo = MixGenerator.getMixInfo(widget.mixType);
     _generateMix();
   }
@@ -57,6 +65,18 @@ class _MixDetailScreenState extends State<MixDetailScreen> with TickerProviderSt
     setState(() => _isGenerating = true);
     
     try {
+      if (_librarySongs.isEmpty) {
+        await _ensureLibraryLoaded();
+      }
+
+      if (_librarySongs.isEmpty) {
+        setState(() {
+          _mixSongs = [];
+          _isGenerating = false;
+        });
+        return;
+      }
+
       final cachedMix = await MixGenerator.loadMixFromPreferences(widget.mixType);
       
       if (cachedMix != null && cachedMix.isNotEmpty) {
@@ -72,7 +92,7 @@ class _MixDetailScreenState extends State<MixDetailScreen> with TickerProviderSt
       debugPrint('Generating new ${widget.mixType} mix...');
       _mixSongs = await MixGenerator.generateMix(
         type: widget.mixType,
-        allSongs: widget.allSongs,
+        allSongs: _librarySongs,
         recentlyPlayed: widget.recentlyPlayed,
         maxSongs: 30,
       );
@@ -98,6 +118,45 @@ class _MixDetailScreenState extends State<MixDetailScreen> with TickerProviderSt
             ),
           ),
         );
+      }
+    }
+  }
+
+  Future<void> _ensureLibraryLoaded() async {
+    if (_isLoadingLibrary) return;
+    setState(() => _isLoadingLibrary = true);
+    _hasTriedLibraryLoad = true;
+
+    try {
+      var status = await Permission.audio.status;
+      if (status.isDenied || status.isRestricted) {
+        status = await Permission.audio.request();
+      }
+
+      if (!status.isGranted) {
+        return;
+      }
+
+      LibrarySourceSettings settings;
+      try {
+        settings = await LibrarySourceService.load();
+      } catch (_) {
+        settings = const LibrarySourceSettings();
+      }
+
+      final songs = await LocalMusicLoader.instance.loadSongs(
+        forceRefresh: true,
+        sourceSettings: settings,
+      );
+
+      if (mounted) {
+        _librarySongs = songs;
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading library for mix: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingLibrary = false);
       }
     }
   }
@@ -172,25 +231,25 @@ class _MixDetailScreenState extends State<MixDetailScreen> with TickerProviderSt
     if (_mixSongs.isEmpty) return;
     
     final firstSong = _mixSongs.first;
-    final correctIndex = widget.allSongs.indexWhere((s) => s.id == firstSong.id);
+    final correctIndex = _librarySongs.indexWhere((s) => s.id == firstSong.id);
     
     debugPrint('Playing all: Song=${firstSong.title}, Index=$correctIndex');
     
     widget.onSongSelected(
       firstSong,
-      widget.allSongs,
+      _librarySongs,
       correctIndex >= 0 ? correctIndex : 0,
     );
   }
 
   void _playSongFromMix(Song song, int mixIndex) {
-    final correctIndex = widget.allSongs.indexWhere((s) => s.id == song.id);
+    final correctIndex = _librarySongs.indexWhere((s) => s.id == song.id);
     
     debugPrint('Playing from mix: Song=${song.title}, MixIndex=$mixIndex, LibraryIndex=$correctIndex');
     
     widget.onSongSelected(
       song,
-      widget.allSongs,
+      _librarySongs,
       correctIndex >= 0 ? correctIndex : 0,
     );
   }
@@ -433,40 +492,58 @@ class _MixDetailScreenState extends State<MixDetailScreen> with TickerProviderSt
   }
 
   Widget _buildEmptyState(ColorScheme colorScheme, TextTheme textTheme) {
+    final isMissingPermission = _librarySongs.isEmpty && _hasTriedLibraryLoad;
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.music_off_rounded,
-            size: 64,
-            color: colorScheme.onSurface.withOpacity(0.3),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'No songs found',
-            style: textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.music_off_rounded,
+              size: 64,
+              color: colorScheme.onSurface.withOpacity(0.3),
             ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 48),
-            child: Text(
-              'Unable to generate mix. Try adding more songs to your library.',
+            const SizedBox(height: 24),
+            Text(
+              isMissingPermission ? 'Permission needed' : 'No songs found',
+              style: textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isMissingPermission
+                  ? 'Allow storage access to load your library and build mixes.'
+                  : 'Unable to generate mix. Try adding more songs to your library.',
               textAlign: TextAlign.center,
               style: textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurface.withOpacity(0.7),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_rounded),
-            label: const Text('Go Back'),
-          ),
-        ],
+            const SizedBox(height: 24),
+            if (isMissingPermission || _librarySongs.isEmpty) ...[
+              FilledButton.icon(
+                onPressed: _isLoadingLibrary ? null : _ensureLibraryLoaded,
+                icon: _isLoadingLibrary
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.folder_open_rounded),
+                label: Text(_isLoadingLibrary ? 'Requesting...' : 'Grant access & load'),
+              ),
+              const SizedBox(height: 12),
+            ],
+            OutlinedButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_rounded),
+              label: const Text('Go Back'),
+            ),
+          ],
+        ),
       ),
     );
   }

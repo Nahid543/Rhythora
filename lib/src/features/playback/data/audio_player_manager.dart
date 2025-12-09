@@ -31,6 +31,11 @@ class AudioPlayerManager {
   bool _isRestoringState = false;
 
   String? _currentTrackingSongId;
+  Timer? _sleepTimer;
+  DateTime? _sleepTimerEndTime;
+  Duration? _sleepTimerDuration;
+  final ValueNotifier<Duration?> sleepTimerRemaining =
+      ValueNotifier<Duration?>(null);
 
   final ValueNotifier<bool> isPlaying = ValueNotifier<bool>(false);
   final ValueNotifier<Duration> position =
@@ -568,6 +573,80 @@ class AudioPlayerManager {
     }
   }
 
+  Future<void> setSleepTimer(Duration duration) async {
+    await _ensureInitialized();
+    _cancelSleepTimerInternal(clearDuration: true);
+
+    if (duration <= Duration.zero) {
+      sleepTimerRemaining.value = null;
+      debugPrint('[AudioPlayer] Sleep timer cleared (non-positive duration)');
+      return;
+    }
+
+    _sleepTimerDuration = duration;
+    _sleepTimerEndTime = DateTime.now().add(duration);
+    sleepTimerRemaining.value = duration;
+
+    _sleepTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (_sleepTimerEndTime == null) {
+        timer.cancel();
+        return;
+      }
+
+      final remaining = _sleepTimerEndTime!.difference(DateTime.now());
+      if (remaining <= Duration.zero) {
+        await _handleSleepTimerComplete();
+      } else {
+        sleepTimerRemaining.value = remaining;
+      }
+    });
+
+    debugPrint(
+      '[AudioPlayer] Sleep timer set for ${duration.inMinutes} minutes',
+    );
+  }
+
+  void cancelSleepTimer() {
+    _cancelSleepTimerInternal(clearDuration: true);
+    sleepTimerRemaining.value = null;
+    debugPrint('[AudioPlayer] Sleep timer cancelled');
+  }
+
+  bool get hasSleepTimer => _sleepTimerEndTime != null;
+  Duration? get sleepTimerDuration => _sleepTimerDuration;
+
+  void _cancelSleepTimerInternal({bool clearDuration = false}) {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+    _sleepTimerEndTime = null;
+    if (clearDuration) {
+      _sleepTimerDuration = null;
+    }
+  }
+
+  Future<void> _handleSleepTimerComplete() async {
+    _cancelSleepTimerInternal(clearDuration: true);
+    sleepTimerRemaining.value = null;
+    debugPrint('[AudioPlayer] Sleep timer completed - pausing playback');
+    await pause();
+  }
+
+  Future<void> clearCache() async {
+    try {
+      if (_defaultArtworkPath != null) {
+        final file = File(_defaultArtworkPath!);
+        if (file.existsSync()) {
+          await file.delete();
+          debugPrint('[AudioPlayer] Deleted cached default artwork');
+        }
+      }
+    } catch (e) {
+      debugPrint('[AudioPlayer] Failed to clear cached artwork: $e');
+    } finally {
+      _defaultArtworkPath = null;
+    }
+  }
+
   List<Song>? get currentQueue => _currentQueue;
   Song? get getCurrentSong => currentSong.value;
 
@@ -582,6 +661,8 @@ class AudioPlayerManager {
     await _player.stop();
     await _player.dispose();
 
+    _sleepTimer?.cancel();
+
     isPlaying.dispose();
     position.dispose();
     duration.dispose();
@@ -589,6 +670,7 @@ class AudioPlayerManager {
     isShuffleEnabled.dispose();
     currentSong.dispose();
     currentIndex.dispose();
+    sleepTimerRemaining.dispose();
 
     debugPrint('🧹 Audio player disposed');
   }

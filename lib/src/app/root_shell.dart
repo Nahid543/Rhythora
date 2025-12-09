@@ -413,8 +413,6 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
 
     final batterySaver = BatterySaverService.instance;
     final animationsEnabled = batterySaver.shouldUseAnimations;
-    final showBatteryChip =
-        batterySaver.isEnabled && _currentIndex == 0; // only on Home
 
     return PopScope(
       canPop: false,
@@ -428,62 +426,14 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
       },
       child: Scaffold(
         backgroundColor: colorScheme.surface,
-        body: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: Row(
-                  children: [
-                    Text(
-                      _currentIndex == 0
-                          ? 'Home'
-                          : _currentIndex == 1
-                              ? 'Library'
-                              : 'Settings',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                    const Spacer(),
-                    if (showBatteryChip)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.battery_saver,
-                              size: 14,
-                              color: colorScheme.primary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Battery saver',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: colorScheme.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Expanded(child: _buildCurrentTab()),
-              MiniPlayerBar(onTap: _openNowPlaying),
-            ],
-          ),
+        body: Column(
+          children: [
+            Expanded(child: _buildCurrentTab()),
+            SafeArea(
+              top: false,
+              child: MiniPlayerBar(onTap: _openNowPlaying),
+            ),
+          ],
         ),
         bottomNavigationBar: AnimatedNavBar(
           currentIndex: _currentIndex,

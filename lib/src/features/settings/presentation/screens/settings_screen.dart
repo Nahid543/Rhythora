@@ -6,6 +6,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../app/rhythora_app.dart' show listeningStatsService;
 import '../../../../core/theme/theme_controller.dart' show themeController;
 import '../../../../core/services/battery_saver_service.dart';
+import '../../../../core/services/cache_service.dart';
+import '../../../playback/data/audio_player_manager.dart';
 import '../widgets/settings_section.dart';
 import '../widgets/settings_tile.dart';
 import '../widgets/sleep_timer_dialog.dart';
@@ -24,10 +26,15 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late SharedPreferences _prefs;
   bool _isLoading = true;
+  bool _isClearingCache = false;
+
+  final AudioPlayerManager _player = AudioPlayerManager.instance;
+  late final VoidCallback _sleepTimerListener;
 
   bool _privacyMode = false;
   bool _isDarkMode = true;
-  Duration? _sleepTimerDuration;
+  Duration? _sleepTimerRemaining;
+  Duration? _sleepTimerSetDuration;
   DefaultScreen _defaultScreen = DefaultScreen.home;
 
   bool _batterySaverEnabled = false;
@@ -37,12 +44,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+
+    _sleepTimerRemaining = _player.sleepTimerRemaining.value;
+    _sleepTimerSetDuration = _player.sleepTimerDuration;
+    _sleepTimerListener = () {
+      if (!mounted) return;
+      setState(() {
+        _sleepTimerRemaining = _player.sleepTimerRemaining.value;
+        _sleepTimerSetDuration = _player.sleepTimerDuration;
+      });
+    };
+    _player.sleepTimerRemaining.addListener(_sleepTimerListener);
+
     _loadPreferences();
     BatterySaverService.instance.addListener(_onBatterySaverChanged);
   }
 
   @override
   void dispose() {
+    _player.sleepTimerRemaining.removeListener(_sleepTimerListener);
     BatterySaverService.instance.removeListener(_onBatterySaverChanged);
     super.dispose();
   }
@@ -62,6 +82,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _privacyMode = _prefs.getBool('privacy_mode') ?? false;
       _isDarkMode = themeController.themeMode != ThemeMode.light;
+      _sleepTimerRemaining = _player.sleepTimerRemaining.value;
+      _sleepTimerSetDuration = _player.sleepTimerDuration;
 
       final defaultScreenValue = _prefs.getString('default_screen') ?? 'home';
       _defaultScreen = defaultScreenValue == 'library'
@@ -369,13 +391,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final duration = await showDialog<Duration>(
       context: context,
       builder: (context) => SleepTimerDialog(
-        currentDuration: _sleepTimerDuration,
+        currentDuration: _sleepTimerSetDuration ?? _sleepTimerRemaining,
       ),
     );
 
     if (duration != null) {
-      setState(() => _sleepTimerDuration = duration);
+      if (duration == Duration.zero) {
+        _player.cancelSleepTimer();
+      } else {
+        await _player.setSleepTimer(duration);
+      }
+
       if (!mounted) return;
+
+      final message = duration == Duration.zero
+          ? 'Sleep timer cancelled'
+          : 'Sleep timer set for ${_formatSleepTimerText(duration)}';
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -383,11 +414,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               const Icon(Icons.bedtime_rounded, size: 20),
               const SizedBox(width: 12),
-              Text(
-                duration == Duration.zero
-                    ? 'Sleep timer cancelled'
-                    : 'Sleep timer set for ${duration.inMinutes} minutes',
-              ),
+              Text(message),
             ],
           ),
           behavior: SnackBarBehavior.floating,
@@ -402,6 +429,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _clearCache() async {
+    if (_isClearingCache) return;
     HapticFeedback.mediumImpact();
 
     final confirmed = await showDialog<bool>(
@@ -449,20 +477,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (confirmed == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle_rounded, size: 20),
-              SizedBox(width: 12),
-              Text('Cache cleared successfully'),
-            ],
+      setState(() => _isClearingCache = true);
+      final messenger = ScaffoldMessenger.of(context);
+
+      try {
+        await CacheService.instance.clearAllCaches();
+        if (!mounted) return;
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle_rounded, size: 20),
+                SizedBox(width: 12),
+                Text('Cache cleared successfully'),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+            margin: EdgeInsets.all(16),
           ),
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
-          margin: EdgeInsets.all(16),
-        ),
-      );
+        );
+      } catch (e) {
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, size: 20),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    'Failed to clear cache. Please try again.',
+                  ),
+                ),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      } finally {
+        if (mounted) {
+          setState(() => _isClearingCache = false);
+        }
+      }
     }
   }
 
@@ -609,6 +668,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
         : 'App opens on Library screen';
   }
 
+  String _sleepTimerSubtitle() {
+    if (_sleepTimerRemaining == null ||
+        _sleepTimerRemaining! <= Duration.zero) {
+      return 'Off';
+    }
+    return '${_formatSleepTimerText(_sleepTimerRemaining!)} remaining';
+  }
+
+  String _formatSleepTimerText(Duration duration) {
+    final totalMinutes = (duration.inSeconds / 60).ceil();
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+
+    if (hours > 0 && minutes > 0) {
+      return '${hours}h ${minutes}m';
+    }
+    if (hours > 0) {
+      return '${hours}h';
+    }
+    return '$totalMinutes minute${totalMinutes == 1 ? '' : 's'}';
+  }
+
   String _batterySaverHeaderText() {
     if (_batterySaverEnabled) {
       return 'Battery Saver is ON · $_batteryLevel%';
@@ -631,7 +712,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return Scaffold(
-      // No AppBar title here; RootShell provides the page title.
+      appBar: AppBar(
+        title: const Text('Settings'),
+        elevation: 0,
+        scrolledUnderElevation: 2,
+      ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -702,10 +787,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               SettingsTile(
                 title: 'Sleep timer',
-                subtitle: _sleepTimerDuration != null &&
-                        _sleepTimerDuration!.inSeconds > 0
-                    ? '${_sleepTimerDuration!.inMinutes} minutes remaining'
-                    : 'Off',
+                subtitle: _sleepTimerSubtitle(),
                 icon: Icons.bedtime_rounded,
                 onTap: _showSleepTimerDialog,
               ),
@@ -812,9 +894,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               SettingsTile(
                 title: 'Clear cache',
-                subtitle: 'Free up storage space',
+                subtitle:
+                    _isClearingCache ? 'Clearing cache...' : 'Free up storage space',
                 icon: Icons.cleaning_services_rounded,
-                onTap: _clearCache,
+                onTap: _isClearingCache ? null : _clearCache,
+                trailing: _isClearingCache
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : null,
               ),
             ],
           ),

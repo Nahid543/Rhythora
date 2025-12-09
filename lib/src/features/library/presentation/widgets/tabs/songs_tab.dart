@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../domain/entities/song.dart';
 import '../../screens/library_screen.dart';
-import '../library_search_bar.dart';
 import '../library_view_toggle.dart';
-import '../library_stats_header.dart';
 import '../song_list_item.dart';
 import '../song_grid_item.dart';
 import '../song_options_bottom_sheet.dart';
@@ -14,6 +12,7 @@ import '../../../../../core/services/battery_saver_service.dart';
 class SongsTab extends StatefulWidget {
   final List<Song> songs;
   final SortType currentSort;
+  final String searchQuery;
   final Function(Song, List<Song>, int) onSongSelected;
   final Future<void> Function() onRefresh;
 
@@ -21,6 +20,7 @@ class SongsTab extends StatefulWidget {
     super.key,
     required this.songs,
     required this.currentSort,
+    required this.searchQuery,
     required this.onSongSelected,
     required this.onRefresh,
   });
@@ -30,13 +30,8 @@ class SongsTab extends StatefulWidget {
 }
 
 class _SongsTabState extends State<SongsTab>
-    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+    with AutomaticKeepAliveClientMixin {
   LibraryViewType _currentView = LibraryViewType.list;
-
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
 
   @override
   bool get wantKeepAlive => true;
@@ -44,36 +39,15 @@ class _SongsTabState extends State<SongsTab>
   @override
   void initState() {
     super.initState();
-
-    _searchController.addListener(() {
-      final value = _searchController.text;
-      if (value != _searchQuery) {
-        setState(() {
-          _searchQuery = value;
-        });
-      }
-    });
-
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    );
-    _fadeController.forward();
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
-    _fadeController.dispose();
     super.dispose();
   }
 
   List<Song> _getFilteredAndSortedSongs() {
-    final query = _searchQuery.trim().toLowerCase();
+    final query = widget.searchQuery.trim().toLowerCase();
     List<Song> filtered;
     if (query.isEmpty) {
       filtered = widget.songs;
@@ -132,54 +106,12 @@ class _SongsTabState extends State<SongsTab>
 
     final filteredSongs = _getFilteredAndSortedSongs();
 
-    final totalDuration = widget.songs.fold<Duration>(
-      Duration.zero,
-      (sum, song) => sum + song.duration,
-    );
-    final uniqueArtists = widget.songs.map((s) => s.artist).toSet().length;
-
     return RefreshIndicator(
       onRefresh: widget.onRefresh,
       color: colorScheme.primary,
       child: Column(
         children: [
-          animationsEnabled
-              ? FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: LibrarySearchBar(
-                    controller: _searchController,
-                    searchQuery: _searchQuery,
-                    onClear: () => _searchController.clear(),
-                    colorScheme: colorScheme,
-                    textTheme: textTheme,
-                  ),
-                )
-              : LibrarySearchBar(
-                  controller: _searchController,
-                  searchQuery: _searchQuery,
-                  onClear: () => _searchController.clear(),
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                ),
-
-          animationsEnabled
-              ? FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: LibraryStatsHeader(
-                    songCount: widget.songs.length,
-                    totalDuration: totalDuration,
-                    artistCount: uniqueArtists,
-                    colorScheme: colorScheme,
-                    textTheme: textTheme,
-                  ),
-                )
-              : LibraryStatsHeader(
-                  songCount: widget.songs.length,
-                  totalDuration: totalDuration,
-                  artistCount: uniqueArtists,
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                ),
+          const SizedBox(height: 8),
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -209,7 +141,11 @@ class _SongsTabState extends State<SongsTab>
 
           Expanded(
             child: filteredSongs.isEmpty
-                ? _buildNoResultsState(colorScheme, textTheme)
+                ? _buildNoResultsState(
+                    colorScheme,
+                    textTheme,
+                    widget.searchQuery,
+                  )
                 : _currentView == LibraryViewType.list
                     ? _buildListView(
                         filteredSongs,
@@ -341,7 +277,15 @@ class _SongsTabState extends State<SongsTab>
     );
   }
 
-  Widget _buildNoResultsState(ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildNoResultsState(
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+    String searchQuery,
+  ) {
+    final trimmedQuery = searchQuery.trim();
+    final message =
+        trimmedQuery.isEmpty ? 'No results' : 'No results for "$trimmedQuery"';
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -353,7 +297,7 @@ class _SongsTabState extends State<SongsTab>
           ),
           const SizedBox(height: 16),
           Text(
-            'No results for "$_searchQuery"',
+            message,
             style: textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurface.withOpacity(0.8),
             ),

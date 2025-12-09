@@ -29,10 +29,10 @@ class LibraryFilterBar extends StatelessWidget {
 
   String _getFolderDisplayName(String path) {
     if (path.isEmpty) return 'Unknown';
-    
+
     final segments = path.split('/')
       ..removeWhere((e) => e.trim().isEmpty);
-    
+
     return segments.isNotEmpty ? segments.last : path;
   }
 
@@ -45,8 +45,9 @@ class LibraryFilterBar extends StatelessWidget {
     }).toList();
 
     return Container(
-      height: 48,
+      height: 56,
       decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(
           bottom: BorderSide(
             color: colorScheme.outline.withOpacity(0.1),
@@ -54,38 +55,50 @@ class LibraryFilterBar extends StatelessWidget {
           ),
         ),
       ),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
         children: [
-          LibraryFilterChip(
-            label: 'All Music',
-            icon: Icons.library_music_rounded,
-            isActive: currentSettings.isAllMusic,
-            onTap: _handleAllMusicTap,
-          ),
-          const SizedBox(width: 8),
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              children: [
+                LibraryFilterChip(
+                  label: 'All Music',
+                  icon: Icons.library_music_rounded,
+                  isActive: currentSettings.isAllMusic,
+                  onTap: _handleAllMusicTap,
+                ),
+                const SizedBox(width: 8),
 
-          ...visibleFolders.map((folder) {
-            final isActive = currentSettings.isFolderActive(folder.path);
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: LibraryFilterChip(
-                label: '${_getFolderDisplayName(folder.path)} (${folder.songCount})',
-                icon: Icons.folder_rounded,
-                isActive: isActive,
-                onTap: () => _handleFolderTap(folder.path),
-              ),
-            );
-          }),
-
-          LibraryFilterChip(
-            label: 'Manage',
-            icon: Icons.settings_rounded,
-            isActive: false,
-            isAddButton: true,
-            onTap: onManageFolders,
+                ...visibleFolders.map((folder) {
+                  final isActive = currentSettings.isFolderActive(folder.path);
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: LibraryFilterChip(
+                      label: '${_getFolderDisplayName(folder.path)} (${folder.songCount})',
+                      icon: Icons.folder_rounded,
+                      isActive: isActive,
+                      onTap: () => _handleFolderTap(folder.path),
+                    ),
+                  );
+                }),
+              ],
+            ),
           ),
+          
+          Container(
+            width: 1,
+            height: 24,
+            color: colorScheme.outline.withOpacity(0.2),
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+          ),
+
+          IconButton(
+            icon: Icon(Icons.settings_rounded, color: colorScheme.primary),
+            tooltip: "Manage Folders",
+            onPressed: onManageFolders,
+          ),
+          const SizedBox(width: 4),
         ],
       ),
     );

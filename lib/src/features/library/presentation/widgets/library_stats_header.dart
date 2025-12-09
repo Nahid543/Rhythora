@@ -6,6 +6,7 @@ class LibraryStatsHeader extends StatelessWidget {
   final int artistCount;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
+  final bool isCompact;
 
   const LibraryStatsHeader({
     super.key,
@@ -14,6 +15,7 @@ class LibraryStatsHeader extends StatelessWidget {
     required this.artistCount,
     required this.colorScheme,
     required this.textTheme,
+    this.isCompact = false,
   });
 
   String _formatTotalDuration(Duration duration) {
@@ -27,9 +29,31 @@ class LibraryStatsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final padding = EdgeInsets.all(isCompact ? 12 : 16);
+    final margin = EdgeInsets.symmetric(
+      horizontal: isCompact ? 12 : 20,
+      vertical: isCompact ? 6 : 8,
+    );
+
+    final useWrap = isCompact;
+    final iconSize = isCompact ? 18.0 : 20.0;
+    final valueStyle = isCompact
+        ? textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onSurface,
+          )
+        : textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onSurface,
+          );
+    final labelStyle = textTheme.bodySmall?.copyWith(
+      color: colorScheme.onSurface.withOpacity(0.7),
+      fontSize: isCompact ? 11 : null,
+    );
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      padding: const EdgeInsets.all(16),
+      margin: margin,
+      padding: padding,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
@@ -45,42 +69,89 @@ class LibraryStatsHeader extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _StatItem(
-            icon: Icons.library_music_rounded,
-            value: '$songCount',
-            label: 'Songs',
-            colorScheme: colorScheme,
-            textTheme: textTheme,
-          ),
-          Container(
-            width: 1,
-            height: 32,
-            color: colorScheme.outline.withOpacity(0.3),
-          ),
-          _StatItem(
-            icon: Icons.schedule_rounded,
-            value: _formatTotalDuration(totalDuration),
-            label: 'Duration',
-            colorScheme: colorScheme,
-            textTheme: textTheme,
-          ),
-          Container(
-            width: 1,
-            height: 32,
-            color: colorScheme.outline.withOpacity(0.3),
-          ),
-          _StatItem(
-            icon: Icons.person_rounded,
-            value: '$artistCount',
-            label: 'Artists',
-            colorScheme: colorScheme,
-            textTheme: textTheme,
-          ),
-        ],
-      ),
+      child: useWrap
+          ? Wrap(
+              spacing: 16,
+              runSpacing: 8,
+              alignment: WrapAlignment.spaceAround,
+              children: [
+                _StatItem(
+                  icon: Icons.library_music_rounded,
+                  value: '$songCount',
+                  label: 'Songs',
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                  iconSize: iconSize,
+                  valueStyle: valueStyle,
+                  labelStyle: labelStyle,
+                ),
+                _StatItem(
+                  icon: Icons.schedule_rounded,
+                  value: _formatTotalDuration(totalDuration),
+                  label: 'Duration',
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                  iconSize: iconSize,
+                  valueStyle: valueStyle,
+                  labelStyle: labelStyle,
+                ),
+                _StatItem(
+                  icon: Icons.person_rounded,
+                  value: '$artistCount',
+                  label: 'Artists',
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                  iconSize: iconSize,
+                  valueStyle: valueStyle,
+                  labelStyle: labelStyle,
+                ),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _StatItem(
+                  icon: Icons.library_music_rounded,
+                  value: '$songCount',
+                  label: 'Songs',
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                  iconSize: iconSize,
+                  valueStyle: valueStyle,
+                  labelStyle: labelStyle,
+                ),
+                Container(
+                  width: 1,
+                  height: 32,
+                  color: colorScheme.outline.withOpacity(0.3),
+                ),
+                _StatItem(
+                  icon: Icons.schedule_rounded,
+                  value: _formatTotalDuration(totalDuration),
+                  label: 'Duration',
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                  iconSize: iconSize,
+                  valueStyle: valueStyle,
+                  labelStyle: labelStyle,
+                ),
+                Container(
+                  width: 1,
+                  height: 32,
+                  color: colorScheme.outline.withOpacity(0.3),
+                ),
+                _StatItem(
+                  icon: Icons.person_rounded,
+                  value: '$artistCount',
+                  label: 'Artists',
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                  iconSize: iconSize,
+                  valueStyle: valueStyle,
+                  labelStyle: labelStyle,
+                ),
+              ],
+            ),
     );
   }
 }
@@ -91,6 +162,9 @@ class _StatItem extends StatelessWidget {
   final String label;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
+  final double iconSize;
+  final TextStyle? valueStyle;
+  final TextStyle? labelStyle;
 
   const _StatItem({
     required this.icon,
@@ -98,6 +172,9 @@ class _StatItem extends StatelessWidget {
     required this.label,
     required this.colorScheme,
     required this.textTheme,
+    required this.iconSize,
+    required this.valueStyle,
+    required this.labelStyle,
   });
 
   @override
@@ -105,21 +182,16 @@ class _StatItem extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: colorScheme.primary, size: 20),
-        const SizedBox(height: 6),
+        Icon(icon, color: colorScheme.primary, size: iconSize),
+        SizedBox(height: iconSize >= 20 ? 6 : 4),
         Text(
           value,
-          style: textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: colorScheme.onSurface,
-          ),
+          style: valueStyle,
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurface.withOpacity(0.7),
-          ),
+          style: labelStyle,
         ),
       ],
     );

@@ -94,6 +94,16 @@ class ListeningStatsService {
     await _checkAndResetDaily();
   }
 
+  void _ensureFreshDaySync() {
+    if (!_isInitialized) return;
+    final lastReset = _prefs.getString(_keyLastResetDate);
+    final today = _getTodayKey();
+    if (lastReset != today) {
+      // Reset immediately; persistence happens inside _resetStats
+      unawaited(_resetStats(today));
+    }
+  }
+
   Future<void> startListening(String songId) async {
     if (!_isInitialized) return;
     if (!BatterySaverService.instance.shouldTrackStats) return;
@@ -188,15 +198,22 @@ class ListeningStatsService {
   }
 
   Duration getTodayListeningTime() {
+    _ensureFreshDaySync();
     if (_sessionStopwatch.isRunning) {
       return _todayListeningTime + _sessionStopwatch.elapsed;
     }
     return _todayListeningTime;
   }
 
-  int getTodaySongPlays() => _todaySongPlays;
+  int getTodaySongPlays() {
+    _ensureFreshDaySync();
+    return _todaySongPlays;
+  }
 
-  int getTodayUniqueSongsCount() => _todayUniqueSongs.length;
+  int getTodayUniqueSongsCount() {
+    _ensureFreshDaySync();
+    return _todayUniqueSongs.length;
+  }
 
   String _getTodayKey() {
     final now = DateTime.now();

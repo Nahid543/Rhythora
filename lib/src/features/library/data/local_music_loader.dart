@@ -295,4 +295,23 @@ class LocalMusicLoader {
       return null;
     }
   }
+
+  Future<void> clearCache() async {
+    _cachedSongsFuture = null;
+    _lastSuccessfulScan = null;
+    _lastSourceSignature = null;
+    _artworkPathCache.clear();
+
+    try {
+      final dir = _artworkCacheDir ?? await _getArtworkCacheDir();
+      if (dir.existsSync()) {
+        await dir.delete(recursive: true);
+        debugPrint('LocalMusicLoader: Cleared artwork cache at ${dir.path}');
+      }
+    } catch (e) {
+      debugPrint('LocalMusicLoader: Failed to clear artwork cache: $e');
+    } finally {
+      _artworkCacheDir = null;
+    }
+  }
 }
