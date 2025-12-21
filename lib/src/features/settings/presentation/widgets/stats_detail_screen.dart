@@ -51,21 +51,70 @@ class _StatsDetailScreenState extends State<StatsDetailScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildStatsView(context, 'today'),
-          _buildStatsView(context, 'week'),
-          _buildStatsView(context, 'month'),
+          FutureBuilder<Widget>(
+            future: _buildStatsView(context, 'today'),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return snapshot.data ?? const SizedBox();
+            },
+          ),
+          FutureBuilder<Widget>(
+            future: _buildStatsView(context, 'week'),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return snapshot.data ?? const SizedBox();
+            },
+          ),
+          FutureBuilder<Widget>(
+            future: _buildStatsView(context, 'month'),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return snapshot.data ?? const SizedBox();
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatsView(BuildContext context, String period) {
+  Future<Widget> _buildStatsView(BuildContext context, String period) async {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    final todayDuration = listeningStatsService.getTodayListeningTime();
-    final todaySongPlays = listeningStatsService.getTodaySongPlays();
-    final todayUniqueSongs = listeningStatsService.getTodayUniqueSongsCount();
+    // Get period-specific stats
+    late final Duration duration;
+    late final int songPlays;
+    late final int uniqueSongs;
+
+    switch (period) {
+      case 'today':
+        duration = listeningStatsService.getTodayListeningTime();
+        songPlays = listeningStatsService.getTodaySongPlays();
+        uniqueSongs = listeningStatsService.getTodayUniqueSongsCount();
+        break;
+      case 'week':
+        final weekStats = await listeningStatsService.getWeekStats();
+        duration = weekStats['duration'] as Duration;
+        songPlays = weekStats['songPlays'] as int;
+        uniqueSongs = weekStats['uniqueSongs'] as int;
+        break;
+      case 'month':
+        final monthStats = await listeningStatsService.getMonthStats();
+        duration = monthStats['duration'] as Duration;
+        songPlays = monthStats['songPlays'] as int;
+        uniqueSongs = monthStats['uniqueSongs'] as int;
+        break;
+      default:
+        duration = Duration.zero;
+        songPlays = 0;
+        uniqueSongs = 0;
+    }
 
     return ListView(
       physics: const BouncingScrollPhysics(),
@@ -113,8 +162,8 @@ class _StatsDetailScreenState extends State<StatsDetailScreen>
                     period == 'today'
                         ? 'Today\'s Activity'
                         : period == 'week'
-                            ? 'This Week'
-                            : 'This Month',
+                            ? 'Last 7 Days'
+                            : 'Last 30 Days',
                     style: textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: colorScheme.onPrimaryContainer,
@@ -129,7 +178,7 @@ class _StatsDetailScreenState extends State<StatsDetailScreen>
                     child: _StatCard(
                       icon: Icons.music_note_rounded,
                       label: 'Songs',
-                      value: '$todaySongPlays',
+                      value: '$songPlays',
                       colorScheme: colorScheme,
                       textTheme: textTheme,
                     ),
@@ -139,7 +188,7 @@ class _StatsDetailScreenState extends State<StatsDetailScreen>
                     child: _StatCard(
                       icon: Icons.schedule_rounded,
                       label: 'Time',
-                      value: _formatDuration(todayDuration),
+                      value: _formatDuration(duration),
                       colorScheme: colorScheme,
                       textTheme: textTheme,
                     ),
@@ -156,7 +205,7 @@ class _StatsDetailScreenState extends State<StatsDetailScreen>
                     color: colorScheme.onSecondaryContainer,
                   ),
                   label: Text(
-                    '$todayUniqueSongs unique ${todayUniqueSongs == 1 ? 'song' : 'songs'}',
+                    '$uniqueSongs unique ${uniqueSongs == 1 ? 'song' : 'songs'}',
                     style: textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSecondaryContainer,
                       fontWeight: FontWeight.w600,

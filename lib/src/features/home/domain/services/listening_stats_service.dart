@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/services/battery_saver_service.dart';
@@ -21,6 +22,7 @@ class ListeningStatsService {
   static const String _keySongPlays = 'daily_song_plays';
   static const String _keyUniqueSongs = 'daily_unique_songs';
   static const String _keyLastResetDate = 'last_reset_date';
+  static const String _keyHistoryPrefix = 'stats_history_'; // Prefix for daily history
 
   late SharedPreferences _prefs;
   bool _isInitialized = false;
@@ -62,6 +64,16 @@ class ListeningStatsService {
   }
 
   Future<void> _resetStats(String todayKey) async {
+    // Save yesterday's stats to history before resetting
+    final lastReset = _prefs.getString(_keyLastResetDate);
+    if (lastReset != null && lastReset != todayKey) {
+      await _saveHistoricalStats(lastReset);
+    }
+
+    // Clean up old historical data (older than 30 days)
+    await _cleanOldHistory();
+
+    // Reset today's stats
     _todayListeningTime = Duration.zero;
     _todaySongPlays = 0;
     _todayUniqueSongs.clear();
@@ -239,6 +251,129 @@ class ListeningStatsService {
       'totalMinutes': getTodayListeningTime().inMinutes * 7,
       'uniqueSongs': _todayUniqueSongs.length,
       'songPlays': _todaySongPlays,
+    };
+  }
+
+  // Save historical stats for a specific date
+  Future<void> _saveHistoricalStats(String dateKey) async {
+    if (!_isInitialized) return;
+    
+    final historyData = {
+      'listeningTimeSeconds': _todayListeningTime.inSeconds,
+      'songPlays': _todaySongPlays,
+      'uniqueSongs': _todayUniqueSongs.length,
+    };
+    
+    await _prefs.setString(
+      '$_keyHistoryPrefix$dateKey',
+      json.encode(historyData),
+    );
+  }
+
+  // Clean up stats older than 30 days
+  Future<void> _cleanOldHistory() async {
+    if (!_isInitialized) return;
+    
+    final now = DateTime.now();
+    final cutoffDate = now.subtract(const Duration(days: 30));
+    
+    final allKeys = _prefs.getKeys();
+    for (final key in allKeys) {
+      if (key.startsWith(_keyHistoryPrefix)) {
+        final dateStr = key.substring(_keyHistoryPrefix.length);
+        try {
+          final parts = dateStr.split('-');
+          if (parts.length == 3) {
+            final date = DateTime(
+              int.parse(parts[0]),
+              int.parse(parts[1]),
+              int.parse(parts[2]),
+            );
+            if (date.isBefore(cutoffDate)) {
+              await _prefs.remove(key);
+            }
+          }
+        } catch (e) {
+          // Invalid date format, skip
+        }
+      }
+    }
+  }
+
+  // Get stats for last 7 days (week)
+  Future<Map<String, dynamic>> getWeekStats() async {
+    if (!_isInitialized) return {'duration': Duration.zero, 'songPlays': 0, 'uniqueSongs': 0};
+    
+    final now = DateTime.now();
+    int totalSeconds = 0;
+    int totalSongPlays = 0;
+    final Set<String> allUniqueSongs = {};
+    
+    // Include today's stats
+    totalSeconds += getTodayListeningTime().inSeconds;
+    totalSongPlays += _todaySongPlays;
+    allUniqueSongs.addAll(_todayUniqueSongs);
+    
+    // Get last 6 days of historical data
+    for (int i = 1; i < 7; i++) {
+      final date = now.subtract(Duration(days: i));
+      final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final historyJson = _prefs.getString('$_keyHistoryPrefix$dateKey');
+      
+      if (historyJson != null) {
+        try {
+          final data = json.decode(historyJson) as Map<String, dynamic>;
+          totalSeconds += (data['listeningTimeSeconds'] as int? ?? 0);
+          totalSongPlays += (data['songPlays'] as int? ?? 0);
+          // Note: We don't have individual song IDs in history, so uniqueSongs is approximate
+        } catch (e) {
+          // Invalid JSON, skip
+        }
+      }
+    }
+    
+    return {
+      'duration': Duration(seconds: totalSeconds),
+      'songPlays': totalSongPlays,
+      'uniqueSongs': allUniqueSongs.length, // Only counts today's unique songs
+    };
+  }
+
+  // Get stats for last 30 days (month)
+  Future<Map<String, dynamic>> getMonthStats() async {
+    if (!_isInitialized) return {'duration': Duration.zero, 'songPlays': 0, 'uniqueSongs': 0};
+    
+    final now = DateTime.now();
+    int totalSeconds = 0;
+    int totalSongPlays = 0;
+    final Set<String> allUniqueSongs = {};
+    
+    // Include today's stats
+    totalSeconds += getTodayListeningTime().inSeconds;
+    totalSongPlays += _todaySongPlays;
+    allUniqueSongs.addAll(_todayUniqueSongs);
+    
+    // Get last 29 days of historical data
+    for (int i = 1; i < 30; i++) {
+      final date = now.subtract(Duration(days: i));
+      final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final historyJson = _prefs.getString('$_keyHistoryPrefix$dateKey');
+      
+      if (historyJson != null) {
+        try {
+          final data = json.decode(historyJson) as Map<String, dynamic>;
+          totalSeconds += (data['listeningTimeSeconds'] as int? ?? 0);
+          totalSongPlays += (data['songPlays'] as int? ?? 0);
+        } catch (e) {
+          // Invalid JSON, skip
+        }
+      }
+    }
+    
+    return {
+      'duration': Duration(seconds: totalSeconds),
+      'songPlays': totalSongPlays,
+      'uniqueSongs': allUniqueSongs.length, // Only counts today's unique songs
     };
   }
 }

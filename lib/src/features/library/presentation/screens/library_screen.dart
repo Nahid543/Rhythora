@@ -35,6 +35,7 @@ class LibraryScreen extends StatefulWidget {
 class _LibraryScreenState extends State<LibraryScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late ScrollController _nestedScrollController;
   late TextEditingController _searchController;
   final PlaylistRepository _playlistRepo = PlaylistRepository.instance;
 
@@ -44,6 +45,7 @@ class _LibraryScreenState extends State<LibraryScreen>
   List<MusicFolder> _availableFolders = [];
   List<Song> _currentSongs = [];
   String _searchQuery = '';
+  String _lastSearchQuery = '';
 
   bool _isInitializing = true;
   bool _isRefreshing = false;
@@ -54,6 +56,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _searchController = TextEditingController();
+    _nestedScrollController = ScrollController();
     _searchController.addListener(() {
       final query = _searchController.text;
       if (query != _searchQuery) {
@@ -68,6 +71,7 @@ class _LibraryScreenState extends State<LibraryScreen>
   void dispose() {
     _tabController.dispose();
     _searchController.dispose();
+    _nestedScrollController.dispose();
     super.dispose();
   }
 
@@ -312,8 +316,26 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
     final int artistCount = _currentSongs.map((s) => s.artist).toSet().length;
 
+    // Reset scroll position when search query changes
+    if (_searchQuery != _lastSearchQuery) {
+      _lastSearchQuery = _searchQuery;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_nestedScrollController.hasClients) {
+          // Scroll to collapsed position (just enough to show search results)
+          // This keeps the stats card hidden and focuses on the song list
+          final collapsedPosition = expandedHeight - kToolbarHeight - 48.0; // 48 = TabBar height
+          _nestedScrollController.animateTo(
+            collapsedPosition,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+
     return Scaffold(
       body: NestedScrollView(
+        controller: _nestedScrollController,
         headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
           return [
             SliverAppBar(

@@ -649,7 +649,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (await launchUrl(webUri, mode: LaunchMode.externalApplication)) {
         return;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Error launching Play Store URL: $e');
+    }
 
     if (!mounted) return;
     messenger.showSnackBar(
