@@ -1,8 +1,8 @@
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../domain/entities/song.dart';
 import '../../data/playlist_repository.dart';
+import 'song_artwork.dart';
 
 class SongListItem extends StatelessWidget {
   final Song song;
@@ -41,31 +41,12 @@ class SongListItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: colorScheme.surfaceVariant,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: song.albumArtPath != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.file(
-                          File(song.albumArtPath!),
-                          fit: BoxFit.cover,
-                          cacheWidth: 150,
-                          errorBuilder: (_, __, ___) => _defaultArtwork(),
-                        ),
-                      )
-                    : _defaultArtwork(),
+              SongArtwork(
+                songId: song.id,
+                albumArtPath: song.albumArtPath,
+                size: 56,
+                borderRadius: 8,
+                iconSize: 28,
               ),
               const SizedBox(width: 12),
 
@@ -109,7 +90,7 @@ class SongListItem extends StatelessWidget {
                     Text(
                       song.artist,
                       style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurface.withOpacity(0.7),
+                        color: colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -122,7 +103,7 @@ class SongListItem extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer.withOpacity(0.5),
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -137,7 +118,7 @@ class SongListItem extends StatelessWidget {
                 IconButton(
                   icon: Icon(
                     Icons.more_vert_rounded,
-                    color: colorScheme.onSurface.withOpacity(0.6),
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                   onPressed: onLongPress,
                 ),
@@ -145,14 +126,6 @@ class SongListItem extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _defaultArtwork() {
-    return Icon(
-      Icons.music_note_rounded,
-      color: colorScheme.onSurfaceVariant,
-      size: 28,
     );
   }
 }

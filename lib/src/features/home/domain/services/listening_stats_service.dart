@@ -45,9 +45,18 @@ class ListeningStatsService {
 
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
-    await _checkAndResetDaily();
-    await _loadTodayStats();
+    
+    // IMPORTANT: Setup MUST be considered initialized before doing daily checks
+    // otherwise the persistence methods inside _resetStats silently abort.
     _isInitialized = true;
+    
+    // 1. Load whatever stats we currently have saved (might be yesterday's or today's)
+    await _loadTodayStats();
+    
+    // 2. Check if the day rolled over. If so, yesterday's stats (currently in memory) 
+    // will be correctly saved to history, then memory & prefs are zeroes out.
+    await _checkAndResetDaily();
+    
     _scheduleMidnightReset();
     _emitSnapshot();
   }
@@ -73,7 +82,7 @@ class ListeningStatsService {
     // Clean up old historical data (older than 30 days)
     await _cleanOldHistory();
 
-    // Reset today's stats
+    // Reset today's stats in memory
     _todayListeningTime = Duration.zero;
     _todaySongPlays = 0;
     _todayUniqueSongs.clear();
@@ -83,7 +92,9 @@ class ListeningStatsService {
       ..stop();
 
     await _prefs.setString(_keyLastResetDate, todayKey);
+    // Write zeroes to disk (this used to silently fail because _isInitialized was false)
     await _saveTodayStats();
+    
     _scheduleMidnightReset();
     _emitSnapshot();
   }
@@ -247,6 +258,8 @@ class ListeningStatsService {
   }
 
   Future<Map<String, dynamic>> getWeeklyStats() async {
+    // This looks like legacy fake data, but we'll leave it in case older code uses it.
+    // The actual UI uses getWeekStats().
     return {
       'totalMinutes': getTodayListeningTime().inMinutes * 7,
       'uniqueSongs': _todayUniqueSongs.length,
@@ -307,12 +320,12 @@ class ListeningStatsService {
     final now = DateTime.now();
     int totalSeconds = 0;
     int totalSongPlays = 0;
-    final Set<String> allUniqueSongs = {};
+    int totalUniqueSongs = 0;
     
     // Include today's stats
     totalSeconds += getTodayListeningTime().inSeconds;
     totalSongPlays += _todaySongPlays;
-    allUniqueSongs.addAll(_todayUniqueSongs);
+    totalUniqueSongs += _todayUniqueSongs.length;
     
     // Get last 6 days of historical data
     for (int i = 1; i < 7; i++) {
@@ -325,7 +338,7 @@ class ListeningStatsService {
           final data = json.decode(historyJson) as Map<String, dynamic>;
           totalSeconds += (data['listeningTimeSeconds'] as int? ?? 0);
           totalSongPlays += (data['songPlays'] as int? ?? 0);
-          // Note: We don't have individual song IDs in history, so uniqueSongs is approximate
+          totalUniqueSongs += (data['uniqueSongs'] as int? ?? 0);
         } catch (e) {
           // Invalid JSON, skip
         }
@@ -335,7 +348,7 @@ class ListeningStatsService {
     return {
       'duration': Duration(seconds: totalSeconds),
       'songPlays': totalSongPlays,
-      'uniqueSongs': allUniqueSongs.length, // Only counts today's unique songs
+      'uniqueSongs': totalUniqueSongs,
     };
   }
 
@@ -346,12 +359,12 @@ class ListeningStatsService {
     final now = DateTime.now();
     int totalSeconds = 0;
     int totalSongPlays = 0;
-    final Set<String> allUniqueSongs = {};
+    int totalUniqueSongs = 0;
     
     // Include today's stats
     totalSeconds += getTodayListeningTime().inSeconds;
     totalSongPlays += _todaySongPlays;
-    allUniqueSongs.addAll(_todayUniqueSongs);
+    totalUniqueSongs += _todayUniqueSongs.length;
     
     // Get last 29 days of historical data
     for (int i = 1; i < 30; i++) {
@@ -364,6 +377,7 @@ class ListeningStatsService {
           final data = json.decode(historyJson) as Map<String, dynamic>;
           totalSeconds += (data['listeningTimeSeconds'] as int? ?? 0);
           totalSongPlays += (data['songPlays'] as int? ?? 0);
+          totalUniqueSongs += (data['uniqueSongs'] as int? ?? 0);
         } catch (e) {
           // Invalid JSON, skip
         }
@@ -373,7 +387,8 @@ class ListeningStatsService {
     return {
       'duration': Duration(seconds: totalSeconds),
       'songPlays': totalSongPlays,
-      'uniqueSongs': allUniqueSongs.length, // Only counts today's unique songs
+      'uniqueSongs': totalUniqueSongs,
     };
   }
 }
+

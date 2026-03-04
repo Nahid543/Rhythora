@@ -1,12 +1,10 @@
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/playlist.dart';
 import '../../data/playlist_repository.dart';
-// ignore: unused_import
-import '../../../playback/data/audio_player_manager.dart';
+import 'song_artwork.dart';
 
 class SongOptionsBottomSheet extends StatelessWidget {
   final Song song;
@@ -38,7 +36,7 @@ class SongOptionsBottomSheet extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: colorScheme.onSurface.withOpacity(0.3),
+                color: colorScheme.onSurface.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
@@ -48,30 +46,12 @@ class SongOptionsBottomSheet extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: colorScheme.surfaceVariant,
-                    ),
-                    child: song.albumArtPath != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.file(
-                              File(song.albumArtPath!),
-                              fit: BoxFit.cover,
-                              cacheWidth: 200,
-                              errorBuilder: (_, __, ___) => Icon(
-                                Icons.music_note_rounded,
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          )
-                        : Icon(
-                            Icons.music_note_rounded,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                  SongArtwork(
+                    songId: song.id,
+                    albumArtPath: song.albumArtPath,
+                    size: 56,
+                    borderRadius: 8,
+                    iconSize: 28,
                   ),
                   const SizedBox(width: 12),
 
@@ -91,7 +71,7 @@ class SongOptionsBottomSheet extends StatelessWidget {
                         Text(
                           song.artist,
                           style: textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurface.withOpacity(0.7),
+                            color: colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -232,7 +212,7 @@ class SongOptionsBottomSheet extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: colorScheme.onSurface.withOpacity(0.3),
+                color: colorScheme.onSurface.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
@@ -281,7 +261,7 @@ class SongOptionsBottomSheet extends StatelessWidget {
                 child: Text(
                   'No playlists yet',
                   style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.6),
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               )
@@ -338,7 +318,9 @@ class SongOptionsBottomSheet extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) {
+        final controller = TextEditingController();
+        return AlertDialog(
         title: const Text('Create Playlist'),
         content: TextField(
           controller: controller,
@@ -375,7 +357,8 @@ class SongOptionsBottomSheet extends StatelessWidget {
             child: const Text('Create'),
           ),
         ],
-      ),
+      );
+      },
     );
   }
 

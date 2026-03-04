@@ -31,7 +31,7 @@ class LibraryFilterChip extends StatelessWidget {
               ? LinearGradient(
                   colors: [
                     colorScheme.primary,
-                    colorScheme.primary.withOpacity(0.8),
+                    colorScheme.primary.withValues(alpha: 0.8),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -39,11 +39,11 @@ class LibraryFilterChip extends StatelessWidget {
               : null,
           color: isAddButton
               ? Colors.transparent
-              : (isActive ? null : colorScheme.surfaceVariant.withOpacity(0.3)),
+              : (isActive ? null : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)),
           border: Border.all(
             color: isAddButton
                 ? colorScheme.primary
-                : (isActive ? Colors.transparent : colorScheme.outline.withOpacity(0.5)),
+                : (isActive ? Colors.transparent : colorScheme.outline.withValues(alpha: 0.5)),
             width: isAddButton ? 1.5 : 1,
           ),
           borderRadius: BorderRadius.circular(20),

@@ -21,7 +21,7 @@ class LibraryViewToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.5),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -78,7 +78,7 @@ class _ToggleButton extends StatelessWidget {
             size: 20,
             color: isSelected
                 ? colorScheme.onPrimary
-                : colorScheme.onSurface.withOpacity(0.7),
+                : colorScheme.onSurface.withValues(alpha: 0.7),
           ),
         ),
       ),

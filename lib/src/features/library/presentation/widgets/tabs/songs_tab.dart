@@ -75,6 +75,9 @@ class _SongsTabState extends State<SongsTab>
         filtered.sort((a, b) => b.duration.compareTo(a.duration));
         break;
       case SortType.dateAdded:
+        // Reverse the natural order — Android returns songs roughly in discovery
+        // order, so reversing shows the most recently found songs first.
+        filtered = filtered.reversed.toList();
         break;
     }
 
@@ -123,7 +126,7 @@ class _SongsTabState extends State<SongsTab>
                       : '${filteredSongs.length} of ${widget.songs.length} songs',
                   style: textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface.withOpacity(0.7),
+                    color: colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
                 const Spacer(),
@@ -197,7 +200,7 @@ class _SongsTabState extends State<SongsTab>
 
         return TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.0, end: 1.0),
-          duration: Duration(milliseconds: 200 + (index * 30)),
+          duration: Duration(milliseconds: 200 + (index.clamp(0, 15) * 30)),
           curve: Curves.easeOut,
           builder: (context, value, child) {
             return Opacity(
@@ -255,7 +258,7 @@ class _SongsTabState extends State<SongsTab>
 
         return TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.0, end: 1.0),
-          duration: Duration(milliseconds: 200 + (index * 30)),
+          duration: Duration(milliseconds: 200 + (index.clamp(0, 15) * 30)),
           curve: Curves.easeOut,
           builder: (context, value, child) {
             return Opacity(
@@ -293,13 +296,13 @@ class _SongsTabState extends State<SongsTab>
           Icon(
             Icons.search_off_rounded,
             size: 64,
-            color: colorScheme.onSurface.withOpacity(0.4),
+            color: colorScheme.onSurface.withValues(alpha: 0.4),
           ),
           const SizedBox(height: 16),
           Text(
             message,
             style: textTheme.bodyLarge?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.8),
+              color: colorScheme.onSurface.withValues(alpha: 0.8),
             ),
             textAlign: TextAlign.center,
           ),

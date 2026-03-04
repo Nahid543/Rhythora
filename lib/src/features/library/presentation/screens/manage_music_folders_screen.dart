@@ -120,10 +120,10 @@ class _ManageMusicFoldersScreenState extends State<ManageMusicFoldersScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withOpacity(0.3),
+              color: colorScheme.primaryContainer.withValues(alpha: 0.3),
               border: Border(
                 bottom: BorderSide(
-                  color: colorScheme.outline.withOpacity(0.2),
+                  color: colorScheme.outline.withValues(alpha: 0.2),
                 ),
               ),
             ),
@@ -139,7 +139,7 @@ class _ManageMusicFoldersScreenState extends State<ManageMusicFoldersScreen> {
                   child: Text(
                     'Select folders to include in your library. Toggle eye icon to hide from filter bar.',
                     style: textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.8),
+                      color: colorScheme.onSurface.withValues(alpha: 0.8),
                     ),
                   ),
                 ),
@@ -198,7 +198,7 @@ class _ManageMusicFoldersScreenState extends State<ManageMusicFoldersScreen> {
             Text(
               'Scanning folders...',
               style: textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.7),
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -214,7 +214,7 @@ class _ManageMusicFoldersScreenState extends State<ManageMusicFoldersScreen> {
             Icon(
               Icons.folder_off_rounded,
               size: 64,
-              color: colorScheme.onSurface.withOpacity(0.3),
+              color: colorScheme.onSurface.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             Text(
@@ -225,7 +225,7 @@ class _ManageMusicFoldersScreenState extends State<ManageMusicFoldersScreen> {
             Text(
               'Add music to your device',
               style: textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.6),
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -277,13 +277,13 @@ class _FolderTile extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: isActive
-            ? colorScheme.primaryContainer.withOpacity(0.4)
+            ? colorScheme.primaryContainer.withValues(alpha: 0.4)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isActive
-              ? colorScheme.primary.withOpacity(0.3)
-              : colorScheme.outline.withOpacity(0.2),
+              ? colorScheme.primary.withValues(alpha: 0.3)
+              : colorScheme.outline.withValues(alpha: 0.2),
           width: isActive ? 2 : 1,
         ),
       ),
@@ -294,7 +294,7 @@ class _FolderTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: isActive
                 ? colorScheme.primary
-                : colorScheme.surfaceVariant.withOpacity(0.5),
+                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
@@ -321,7 +321,7 @@ class _FolderTile extends StatelessWidget {
               icon: Icon(
                 isHidden ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                 color: isHidden
-                    ? colorScheme.onSurface.withOpacity(0.4)
+                    ? colorScheme.onSurface.withValues(alpha: 0.4)
                     : colorScheme.primary,
               ),
               onPressed: onToggleVisibility,

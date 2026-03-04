@@ -18,12 +18,19 @@ class LocalMusicLoader {
 
   final OnAudioQuery _audioQuery = OnAudioQuery();
   Directory? _artworkCacheDir;
+
+  /// In-memory cache: songId -> artwork file path (or null if no artwork).
   final Map<int, String?> _artworkPathCache = {};
+
   Future<List<Song>>? _cachedSongsFuture;
   DateTime? _lastSuccessfulScan;
   String? _lastSourceSignature;
 
   static const Duration _cacheTtl = Duration(minutes: 5);
+
+  // ──────────────────────────────────────────────
+  // Permission
+  // ──────────────────────────────────────────────
 
   Future<bool> _requestPermission() async {
     if (kIsWeb) return false;
@@ -35,6 +42,10 @@ class LocalMusicLoader {
     final storageStatus = await Permission.storage.request();
     return storageStatus.isGranted;
   }
+
+  // ──────────────────────────────────────────────
+  // Public API
+  // ──────────────────────────────────────────────
 
   Future<List<Song>> loadSongs({
     bool forceRefresh = false,
@@ -56,6 +67,40 @@ class LocalMusicLoader {
     _cachedSongsFuture = _scanSongs(sourceSettings: sourceSettings);
     return _cachedSongsFuture!;
   }
+
+  /// Lazily fetch and cache artwork for a song.
+  /// Returns the cached file path immediately if available,
+  /// otherwise fetches from the platform and writes to disk.
+  ///
+  /// Safe to call from the UI — returns quickly for cached artwork.
+  Future<String?> getOrCacheArtwork(int songId) async {
+    // 1. Check in-memory cache first (instant)
+    if (_artworkPathCache.containsKey(songId)) {
+      return _artworkPathCache[songId];
+    }
+
+    // 2. Check if file exists on disk (fast sync I/O)
+    final diskPath = _getDiskCachePath(songId);
+    if (diskPath != null) {
+      final file = File(diskPath);
+      if (file.existsSync()) {
+        _artworkPathCache[songId] = diskPath;
+        return diskPath;
+      }
+    }
+
+    // 3. Fetch from platform & cache to disk
+    if (!BatterySaverService.instance.shouldLoadAlbumArt) {
+      _artworkPathCache[songId] = null;
+      return null;
+    }
+
+    return _fetchAndCacheArtwork(songId);
+  }
+
+  // ──────────────────────────────────────────────
+  // Scanning (no artwork fetching in the loop!)
+  // ──────────────────────────────────────────────
 
   String _buildSourceSignature(LibrarySourceSettings? settings) {
     if (settings == null || settings.isAllMusic || settings.folderPaths.isEmpty) {
@@ -123,10 +168,7 @@ class LocalMusicLoader {
       return const <MusicFolder>[];
     }
 
-    debugPrint('🔍 Found ${folderCounts.length} unique folders:');
-    folderCounts.forEach((path, count) {
-      debugPrint('  📁 $count song${count == 1 ? '' : 's'} in: $path');
-    });
+    debugPrint('🔍 Found ${folderCounts.length} unique folders');
 
     final folders = folderCounts.entries.map((entry) {
       final pathWithoutSlash = entry.key.substring(0, entry.key.length - 1);
@@ -165,6 +207,7 @@ class LocalMusicLoader {
     final filteredAudio = _applyFolderFilter(audioList, sourceSettings);
     if (filteredAudio.isEmpty) return dummySongs;
 
+    // Build songs list WITHOUT fetching artwork — fast!
     final songs = <Song>[];
     for (final s in filteredAudio) {
       final source = (s.uri != null && s.uri!.isNotEmpty) ? s.uri! : s.data;
@@ -172,7 +215,10 @@ class LocalMusicLoader {
 
       final durationMs = s.duration ?? 0;
       final duration = Duration(milliseconds: durationMs);
-      final cachedArtPath = await _cacheArtworkIfNeeded(s);
+
+      // Only check if cached artwork already exists on disk (sync, fast).
+      // No platform queries, no file writes here.
+      final cachedArtPath = _getCachedArtworkPathSync(s.id);
 
       songs.add(
         Song(
@@ -244,6 +290,10 @@ class LocalMusicLoader {
     }).toList();
   }
 
+  // ──────────────────────────────────────────────
+  // Artwork caching (lazy, on-demand)
+  // ──────────────────────────────────────────────
+
   Future<Directory> _getArtworkCacheDir() async {
     if (_artworkCacheDir != null) return _artworkCacheDir!;
     final baseDir = await getApplicationDocumentsDirectory();
@@ -255,18 +305,41 @@ class LocalMusicLoader {
     return cacheDir;
   }
 
-  Future<String?> _cacheArtworkIfNeeded(SongModel songModel) async {
-    if (!BatterySaverService.instance.shouldLoadAlbumArt) {
-      return null;
-    }
+  /// Returns the expected disk cache path for a song's artwork.
+  String? _getDiskCachePath(int songId) {
+    if (_artworkCacheDir == null) return null;
+    return '${_artworkCacheDir!.path}/artwork_$songId.jpg';
+  }
 
-    if (kIsWeb || !Platform.isAndroid) return null;
-    final songId = songModel.id;
+  /// Synchronous check: returns cached artwork path if the file exists.
+  /// Does NOT trigger any platform calls or file writes.
+  String? _getCachedArtworkPathSync(int songId) {
+    // Check in-memory cache
     if (_artworkPathCache.containsKey(songId)) {
       return _artworkPathCache[songId];
     }
 
-    if (songModel.albumId == null || songModel.albumId! <= 0) {
+    // Check disk (the cache dir might not be initialized yet on first scan)
+    if (_artworkCacheDir != null) {
+      final path = '${_artworkCacheDir!.path}/artwork_$songId.jpg';
+      if (File(path).existsSync()) {
+        _artworkPathCache[songId] = path;
+        return path;
+      }
+      // Also check old PNG format from previous cache
+      final pngPath = '${_artworkCacheDir!.path}/artwork_$songId.png';
+      if (File(pngPath).existsSync()) {
+        _artworkPathCache[songId] = pngPath;
+        return pngPath;
+      }
+    }
+
+    return null;
+  }
+
+  /// Fetches artwork from the platform and caches it to disk as JPEG.
+  Future<String?> _fetchAndCacheArtwork(int songId) async {
+    if (kIsWeb || !Platform.isAndroid) {
       _artworkPathCache[songId] = null;
       return null;
     }
@@ -275,8 +348,9 @@ class LocalMusicLoader {
       final data = await _audioQuery.queryArtwork(
         songId,
         ArtworkType.AUDIO,
-        format: ArtworkFormat.PNG,
-        size: 512,
+        format: ArtworkFormat.JPEG,
+        size: 200,
+        quality: 80,
       );
 
       if (data == null || data.isEmpty) {
@@ -285,7 +359,7 @@ class LocalMusicLoader {
       }
 
       final cacheDir = await _getArtworkCacheDir();
-      final file = File('${cacheDir.path}/artwork_$songId.png');
+      final file = File('${cacheDir.path}/artwork_$songId.jpg');
       await file.writeAsBytes(data, flush: true);
       _artworkPathCache[songId] = file.path;
       return file.path;
@@ -294,6 +368,11 @@ class LocalMusicLoader {
       _artworkPathCache[songId] = null;
       return null;
     }
+  }
+
+  /// Pre-warms the artwork cache directory so sync checks work on first scan.
+  Future<void> warmUpCacheDir() async {
+    await _getArtworkCacheDir();
   }
 
   Future<void> clearCache() async {

@@ -89,7 +89,7 @@ class _PlaylistsTabState extends State<PlaylistsTab>
           Icon(
             Icons.playlist_add_rounded,
             size: 64,
-            color: colorScheme.onSurface.withOpacity(0.4),
+            color: colorScheme.onSurface.withValues(alpha: 0.4),
           ),
           const SizedBox(height: 16),
           Text(
@@ -100,7 +100,7 @@ class _PlaylistsTabState extends State<PlaylistsTab>
           Text(
             'Create your first playlist',
             style: textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.7),
+              color: colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -109,45 +109,46 @@ class _PlaylistsTabState extends State<PlaylistsTab>
   }
 
   void _showCreatePlaylistDialog(BuildContext context) {
-    final controller = TextEditingController();
-
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create Playlist'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 50,
-          decoration: const InputDecoration(
-            hintText: 'Playlist name',
-            border: OutlineInputBorder(),
-          ),
-          textCapitalization: TextCapitalization.words,
-          onSubmitted: (value) {
-            if (value.trim().isNotEmpty) {
-              Navigator.pop(context);
-              _createPlaylist(value.trim());
-            }
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
+      builder: (context) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          title: const Text('Create Playlist'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 50,
+            decoration: const InputDecoration(
+              hintText: 'Playlist name',
+              border: OutlineInputBorder(),
+            ),
+            textCapitalization: TextCapitalization.words,
+            onSubmitted: (value) {
+              if (value.trim().isNotEmpty) {
                 Navigator.pop(context);
-                _createPlaylist(name);
+                _createPlaylist(value.trim());
               }
             },
-            child: const Text('Create'),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final name = controller.text.trim();
+                if (name.isNotEmpty) {
+                  Navigator.pop(context);
+                  _createPlaylist(name);
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -211,7 +212,7 @@ class _PlaylistsTabState extends State<PlaylistsTab>
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: colorScheme.onSurface.withOpacity(0.3),
+                color: colorScheme.onSurface.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
@@ -243,44 +244,45 @@ class _PlaylistsTabState extends State<PlaylistsTab>
   }
 
   void _showRenameDialog(BuildContext context, Playlist playlist) {
-    final controller = TextEditingController(text: playlist.name);
-
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Rename Playlist'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 50,
-          decoration: const InputDecoration(
-            hintText: 'Playlist name',
-            border: OutlineInputBorder(),
-          ),
-          onSubmitted: (value) {
-            if (value.trim().isNotEmpty) {
-              Navigator.pop(context);
-              _repo.renamePlaylist(playlist.id, value.trim());
-            }
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
+      builder: (context) {
+        final controller = TextEditingController(text: playlist.name);
+        return AlertDialog(
+          title: const Text('Rename Playlist'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 50,
+            decoration: const InputDecoration(
+              hintText: 'Playlist name',
+              border: OutlineInputBorder(),
+            ),
+            onSubmitted: (value) {
+              if (value.trim().isNotEmpty) {
                 Navigator.pop(context);
-                _repo.renamePlaylist(playlist.id, name);
+                _repo.renamePlaylist(playlist.id, value.trim());
               }
             },
-            child: const Text('Rename'),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final name = controller.text.trim();
+                if (name.isNotEmpty) {
+                  Navigator.pop(context);
+                  _repo.renamePlaylist(playlist.id, name);
+                }
+              },
+              child: const Text('Rename'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -332,11 +334,11 @@ class _CreatePlaylistButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
-      color: colorScheme.primaryContainer.withOpacity(0.5),
+      color: colorScheme.primaryContainer.withValues(alpha: 0.5),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: colorScheme.primary.withOpacity(0.3),
+          color: colorScheme.primary.withValues(alpha: 0.3),
           width: 1.5,
         ),
       ),
@@ -410,7 +412,7 @@ class _PlaylistTile extends StatelessWidget {
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: 200 + (index * 30)),
+      duration: Duration(milliseconds: 200 + (index.clamp(0, 15) * 30)),
       curve: Curves.easeOut,
       builder: (context, value, child) {
         return Opacity(
@@ -420,7 +422,7 @@ class _PlaylistTile extends StatelessWidget {
             child: Card(
               margin: const EdgeInsets.only(bottom: 12),
               elevation: 0,
-              color: colorScheme.surfaceVariant.withOpacity(0.3),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -467,7 +469,7 @@ class _PlaylistTile extends StatelessWidget {
                             Text(
                               '${playlist.songCount} songs${durationText.isNotEmpty ? ' · $durationText' : ''}',
                               style: textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurface.withOpacity(0.7),
+                                color: colorScheme.onSurface.withValues(alpha: 0.7),
                               ),
                             ),
                           ],
@@ -477,7 +479,7 @@ class _PlaylistTile extends StatelessWidget {
                       if (onLongPress != null)
                         Icon(
                           Icons.more_vert,
-                          color: colorScheme.onSurface.withOpacity(0.6),
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                     ],
                   ),
@@ -532,7 +534,7 @@ class _PlaylistTile extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: colorScheme.surfaceVariant,
+          color: colorScheme.surfaceContainerHighest,
         ),
         child: song.albumArtPath != null
             ? ClipRRect(
@@ -569,13 +571,13 @@ class _PlaylistTile extends StatelessWidget {
                 fit: BoxFit.cover,
                 cacheWidth: 75,
                 errorBuilder: (_, __, ___) => Container(
-                  color: colorScheme.surfaceVariant,
+                  color: colorScheme.surfaceContainerHighest,
                   child: _defaultIcon(),
                 ),
               );
             }
             return Container(
-              color: colorScheme.surfaceVariant,
+              color: colorScheme.surfaceContainerHighest,
               child: _defaultIcon(),
             );
           },

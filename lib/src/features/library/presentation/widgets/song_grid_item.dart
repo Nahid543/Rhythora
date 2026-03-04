@@ -1,8 +1,8 @@
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../domain/entities/song.dart';
 import '../../data/playlist_repository.dart';
+import 'song_artwork.dart';
 
 class SongGridItem extends StatelessWidget {
   final Song song;
@@ -32,7 +32,7 @@ class SongGridItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
-            color: colorScheme.surfaceVariant.withOpacity(0.3),
+            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -42,32 +42,16 @@ class SongGridItem extends StatelessWidget {
                 flex: 3,
                 child: Stack(
                   children: [
-                    Container(
-                      margin: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color: colorScheme.surfaceVariant,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: SongArtwork(
+                        songId: song.id,
+                        albumArtPath: song.albumArtPath,
+                        size: double.infinity,
+                        borderRadius: 12,
+                        iconSize: 48,
+                        cacheWidth: 200,
                       ),
-                      child: song.albumArtPath != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.file(
-                                File(song.albumArtPath!),
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                                cacheWidth: 300,
-                                errorBuilder: (_, __, ___) => _defaultArtwork(),
-                              ),
-                            )
-                          : _defaultArtwork(),
                     ),
 
                     ValueListenableBuilder<Set<String>>(
@@ -84,7 +68,7 @@ class SongGridItem extends StatelessWidget {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.red.withOpacity(0.4),
+                                    color: Colors.red.withValues(alpha: 0.4),
                                     blurRadius: 8,
                                     spreadRadius: 2,
                                   ),
@@ -125,7 +109,7 @@ class SongGridItem extends StatelessWidget {
                       Text(
                         song.artist,
                         style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurface.withOpacity(0.7),
+                          color: colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -137,16 +121,6 @@ class SongGridItem extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _defaultArtwork() {
-    return Center(
-      child: Icon(
-        Icons.music_note_rounded,
-        color: colorScheme.onSurfaceVariant,
-        size: 48,
       ),
     );
   }

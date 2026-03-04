@@ -87,7 +87,7 @@ class _FavoritesTabState extends State<FavoritesTab>
                   final song = favoriteSongs[index];
                   return TweenAnimationBuilder<double>(
                     tween: Tween(begin: 0.0, end: 1.0),
-                    duration: Duration(milliseconds: 200 + (index * 30)),
+                    duration: Duration(milliseconds: 200 + (index.clamp(0, 15) * 30)),
                     curve: Curves.easeOut,
                     builder: (context, value, child) {
                       return Opacity(
@@ -127,7 +127,7 @@ class _FavoritesTabState extends State<FavoritesTab>
           Icon(
             Icons.favorite_border,
             size: 64,
-            color: colorScheme.onSurface.withOpacity(0.4),
+            color: colorScheme.onSurface.withValues(alpha: 0.4),
           ),
           const SizedBox(height: 16),
           Text(
@@ -140,7 +140,7 @@ class _FavoritesTabState extends State<FavoritesTab>
           Text(
             'Tap the heart icon on songs you love',
             style: textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.7),
+              color: colorScheme.onSurface.withValues(alpha: 0.7),
             ),
             textAlign: TextAlign.center,
           ),

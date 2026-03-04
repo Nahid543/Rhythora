@@ -50,7 +50,7 @@ class LibraryFilterBar extends StatelessWidget {
         color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(
           bottom: BorderSide(
-            color: colorScheme.outline.withOpacity(0.1),
+            color: colorScheme.outline.withValues(alpha: 0.1),
             width: 1,
           ),
         ),
@@ -89,7 +89,7 @@ class LibraryFilterBar extends StatelessWidget {
           Container(
             width: 1,
             height: 24,
-            color: colorScheme.outline.withOpacity(0.2),
+            color: colorScheme.outline.withValues(alpha: 0.2),
             margin: const EdgeInsets.symmetric(horizontal: 4),
           ),
 

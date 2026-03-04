@@ -155,7 +155,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                colorScheme.primaryContainer.withOpacity(0.3),
+                colorScheme.primaryContainer.withValues(alpha: 0.3),
                 colorScheme.surface,
               ],
             ),
@@ -195,7 +195,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
                   Text(
                     '${songs.length} songs · ${_formatDuration(totalDuration)}',
                     style: textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.7),
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -227,7 +227,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.red.withOpacity(0.3),
+              color: Colors.red.withValues(alpha: 0.3),
               blurRadius: 30,
               spreadRadius: 5,
               offset: const Offset(0, 10),
@@ -251,7 +251,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.primary.withOpacity(0.2),
+              color: colorScheme.primary.withValues(alpha: 0.2),
               blurRadius: 30,
               spreadRadius: 5,
               offset: const Offset(0, 10),
@@ -273,10 +273,10 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
         height: size,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
-          color: colorScheme.surfaceVariant,
+          color: colorScheme.surfaceContainerHighest,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 30,
               spreadRadius: 5,
               offset: const Offset(0, 10),
@@ -304,7 +304,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 30,
             spreadRadius: 5,
             offset: const Offset(0, 10),
@@ -328,7 +328,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
                 fit: BoxFit.cover,
                 cacheWidth: (size / 2).toInt(),
                 errorBuilder: (_, __, ___) => Container(
-                  color: colorScheme.surfaceVariant,
+                  color: colorScheme.surfaceContainerHighest,
                   child: Icon(
                     Icons.music_note_rounded,
                     color: colorScheme.onSurfaceVariant,
@@ -338,7 +338,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
               );
             }
             return Container(
-              color: colorScheme.surfaceVariant,
+              color: colorScheme.surfaceContainerHighest,
               child: Icon(
                 Icons.music_note_rounded,
                 color: colorScheme.onSurfaceVariant,
@@ -502,7 +502,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
                 height: 48,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
-                  color: colorScheme.surfaceVariant,
+                  color: colorScheme.surfaceContainerHighest,
                 ),
                 child: song.albumArtPath != null
                     ? ClipRRect(
@@ -534,7 +534,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
               ),
               trailing: Icon(
                 Icons.drag_handle_rounded,
-                color: colorScheme.onSurface.withOpacity(0.6),
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ),
@@ -560,7 +560,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
             Icon(
               Icons.music_note_rounded,
               size: 80,
-              color: colorScheme.onSurface.withOpacity(0.3),
+              color: colorScheme.onSurface.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 24),
             Text(
@@ -573,7 +573,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
             Text(
               'Add songs to start building your playlist',
               style: textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.7),
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
             ),
@@ -633,7 +633,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen>
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: colorScheme.onSurface.withOpacity(0.3),
+                color: colorScheme.onSurface.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
@@ -794,7 +794,7 @@ class _AddSongsSheetState extends State<_AddSongsSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: colorScheme.onSurface.withOpacity(0.3),
+              color: colorScheme.onSurface.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(999),
             ),
           ),
@@ -857,7 +857,7 @@ class _AddSongsSheetState extends State<_AddSongsSheet> {
                           ? 'All songs already in playlist'
                           : 'No results',
                       style: textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.onSurface.withOpacity(0.6),
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   )
@@ -885,7 +885,7 @@ class _AddSongsSheetState extends State<_AddSongsSheet> {
                           height: 48,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(4),
-                            color: colorScheme.surfaceVariant,
+                            color: colorScheme.surfaceContainerHighest,
                           ),
                           child: song.albumArtPath != null
                               ? ClipRRect(

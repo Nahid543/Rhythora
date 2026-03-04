@@ -47,7 +47,7 @@ class LibraryStatsHeader extends StatelessWidget {
             color: colorScheme.onSurface,
           );
     final labelStyle = textTheme.bodySmall?.copyWith(
-      color: colorScheme.onSurface.withOpacity(0.7),
+      color: colorScheme.onSurface.withValues(alpha: 0.7),
       fontSize: isCompact ? 11 : null,
     );
 
@@ -60,12 +60,12 @@ class LibraryStatsHeader extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            colorScheme.primaryContainer.withOpacity(0.3),
-            colorScheme.secondaryContainer.withOpacity(0.2),
+            colorScheme.primaryContainer.withValues(alpha: 0.3),
+            colorScheme.secondaryContainer.withValues(alpha: 0.2),
           ],
         ),
         border: Border.all(
-          color: colorScheme.outline.withOpacity(0.2),
+          color: colorScheme.outline.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -123,7 +123,7 @@ class LibraryStatsHeader extends StatelessWidget {
                 Container(
                   width: 1,
                   height: 32,
-                  color: colorScheme.outline.withOpacity(0.3),
+                  color: colorScheme.outline.withValues(alpha: 0.3),
                 ),
                 _StatItem(
                   icon: Icons.schedule_rounded,
@@ -138,7 +138,7 @@ class LibraryStatsHeader extends StatelessWidget {
                 Container(
                   width: 1,
                   height: 32,
-                  color: colorScheme.outline.withOpacity(0.3),
+                  color: colorScheme.outline.withValues(alpha: 0.3),
                 ),
                 _StatItem(
                   icon: Icons.person_rounded,
