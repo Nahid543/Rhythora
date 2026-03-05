@@ -189,6 +189,56 @@ class LocalMusicLoader {
     return folders;
   }
 
+  // --- Metadata cleaning helpers ---
+
+  static final _extensionPattern = RegExp(
+    r'\.(mp3|flac|m4a|wav|ogg|aac|wma|opus|alac)$',
+    caseSensitive: false,
+  );
+  static final _bitratePattern = RegExp(
+    r'[\(\[]\s*\d{2,4}\s*k(?:bps)?\s*[\)\]]',
+    caseSensitive: false,
+  );
+  static final _tagPattern = RegExp(
+    r'[\[\(]\s*(?:FULL|HQ|HD|LQ|Official|Audio|Video|Lyrics?|MV)\s*[\]\)]',
+    caseSensitive: false,
+  );
+  static final _unknownPattern = RegExp(
+    r'^<unknown>$',
+    caseSensitive: false,
+  );
+
+  static String _cleanTitle(String raw) {
+    var t = raw;
+    // Remove file extension
+    t = t.replaceAll(_extensionPattern, '');
+    // Remove bitrate tags like (256k), [320kbps]
+    t = t.replaceAll(_bitratePattern, '');
+    // Remove common tags like [FULL], (Official Audio)
+    t = t.replaceAll(_tagPattern, '');
+    // Replace underscores with spaces
+    t = t.replaceAll('_', ' ');
+    // Collapse multiple spaces & trim
+    t = t.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+    // Remove trailing dash/hyphen artifacts (e.g. "Artist - " → "Artist")
+    t = t.replaceAll(RegExp(r'[\-–—]\s*$'), '').trim();
+    return t.isEmpty ? raw : t;
+  }
+
+  static String _cleanArtist(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return 'Unknown Artist';
+    if (_unknownPattern.hasMatch(raw.trim())) return 'Unknown Artist';
+    return raw.trim();
+  }
+
+  static String _cleanAlbum(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return 'Unknown Album';
+    if (_unknownPattern.hasMatch(raw.trim())) return 'Unknown Album';
+    return raw.trim();
+  }
+
+  // --- Song scanning ---
+
   Future<List<Song>> _scanSongs({LibrarySourceSettings? sourceSettings}) async {
     final granted = await _requestPermission();
     if (!granted) {
@@ -223,14 +273,10 @@ class LocalMusicLoader {
       songs.add(
         Song(
           id: s.id.toString(),
-          title: s.title,
-          artist: s.artist?.trim().isNotEmpty == true
-              ? s.artist!
-              : 'Unknown Artist',
+          title: _cleanTitle(s.title),
+          artist: _cleanArtist(s.artist),
           duration: duration,
-          album: s.album?.trim().isNotEmpty == true
-              ? s.album!
-              : 'Unknown Album',
+          album: _cleanAlbum(s.album),
           filePath: source,
           albumArtPath: cachedArtPath,
         ),

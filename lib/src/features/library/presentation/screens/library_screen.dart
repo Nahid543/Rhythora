@@ -8,7 +8,6 @@ import '../../domain/models/library_source_settings.dart';
 import '../../domain/models/library_source_service.dart';
 
 import '../../presentation/widgets/library_filter_bar.dart';
-import '../../presentation/widgets/library_stats_header.dart';
 import '../../presentation/widgets/library_search_bar.dart';
 import '../widgets/tabs/songs_tab.dart';
 import '../widgets/tabs/playlists_tab.dart';
@@ -45,7 +44,6 @@ class _LibraryScreenState extends State<LibraryScreen>
   List<MusicFolder> _availableFolders = [];
   List<Song> _currentSongs = [];
   String _searchQuery = '';
-  String _lastSearchQuery = '';
 
   bool _isInitializing = true;
   bool _isRefreshing = false;
@@ -62,6 +60,19 @@ class _LibraryScreenState extends State<LibraryScreen>
       if (query != _searchQuery) {
         setState(() => _searchQuery = query);
       }
+    });
+    // Fix: Reset scroll position when switching tabs to prevent blank screen
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_nestedScrollController.hasClients) {
+          _nestedScrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          );
+        }
+      });
     });
     _playlistRepo.initialize();
     _initializeLibrary();
@@ -151,6 +162,14 @@ class _LibraryScreenState extends State<LibraryScreen>
     }
 
     return '${selectedPaths.length} Folders';
+  }
+
+  String _formatStatsSubtitle(int songCount, Duration totalDuration, int artistCount) {
+    final hours = totalDuration.inHours;
+    final minutes = totalDuration.inMinutes % 60;
+    final durationStr = hours > 0 ? '${hours}h ${minutes}m' : '${minutes} min';
+    final artistLabel = artistCount == 1 ? 'artist' : 'artists';
+    return '$songCount songs · $durationStr · $artistCount $artistLabel';
   }
 
   Future<void> _handleFilterChange(LibrarySourceSettings newSettings) async {
@@ -296,7 +315,6 @@ class _LibraryScreenState extends State<LibraryScreen>
     final isCompact = size.width < 360 || size.height < 700;
     final bool hasFilters =
         _availableFolders.isNotEmpty && _librarySourceSettings != null;
-    final double expandedHeight = isCompact ? 220.0 : 260.0;
 
     if (_isInitializing) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -315,23 +333,17 @@ class _LibraryScreenState extends State<LibraryScreen>
       (int sum, Song song) => sum + song.duration.inMilliseconds,
     );
     final int artistCount = _currentSongs.map((s) => s.artist).toSet().length;
+    final statsSubtitle = _formatStatsSubtitle(
+      songCount,
+      Duration(milliseconds: totalDurationMs),
+      artistCount,
+    );
 
-    // Reset scroll position when search query changes
-    if (_searchQuery != _lastSearchQuery) {
-      _lastSearchQuery = _searchQuery;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_nestedScrollController.hasClients) {
-          // Scroll to collapsed position (just enough to show search results)
-          // This keeps the stats card hidden and focuses on the song list
-          final collapsedPosition = expandedHeight - kToolbarHeight - 48.0; // 48 = TabBar height
-          _nestedScrollController.animateTo(
-            collapsedPosition,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
-      });
-    }
+    // Build the dynamic title with folder context
+    final title = _getDynamicTitle();
+    final isAllMusic = _librarySourceSettings == null || _librarySourceSettings!.isAllMusic;
+    final displayTitle = isAllMusic ? 'Library' : 'Library';
+    final folderContext = isAllMusic ? null : title;
 
     return Scaffold(
       body: NestedScrollView(
@@ -339,24 +351,22 @@ class _LibraryScreenState extends State<LibraryScreen>
         headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
           return [
             SliverAppBar(
-              expandedHeight: expandedHeight,
+              expandedHeight: isCompact ? 130.0 : 145.0,
               pinned: true,
               floating: false,
               elevation: 0,
               scrolledUnderElevation: 2,
               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               automaticallyImplyLeading: false,
-              
-              // Title when scrolled
-              title: innerBoxIsScrolled 
-                ? Text(
-                    _getDynamicTitle(),
-                    style: textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
-                : null,
               centerTitle: false,
+
+              // Always show title (no overlap since FlexibleSpaceBar is gone)
+              title: Text(
+                displayTitle,
+                style: textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
 
               actions: [
                 IconButton(
@@ -367,43 +377,53 @@ class _LibraryScreenState extends State<LibraryScreen>
                 const SizedBox(width: 4),
               ],
 
-              // Collapsible header content
+              // Compact header: folder context + stats subtitle
               flexibleSpace: FlexibleSpaceBar(
-                collapseMode: CollapseMode.parallax,
+                collapseMode: CollapseMode.pin,
                 background: SafeArea(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      isCompact ? 16 : 20,
-                      isCompact ? 8 : 12,
-                      isCompact ? 16 : 20,
-                      0,
+                    padding: EdgeInsets.only(
+                      left: isCompact ? 16 : 20,
+                      right: isCompact ? 16 : 20,
+                      top: kToolbarHeight + 8,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Title
+                        // Folder context (only when a folder is selected)
+                        if (folderContext != null)
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.folder_rounded,
+                                size: 16,
+                                color: colorScheme.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  folderContext,
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        if (folderContext != null)
+                          const SizedBox(height: 4),
+
+                        // Inline stats subtitle
                         Text(
-                          _getDynamicTitle(),
-                          style: textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: isCompact
-                                ? textTheme.headlineSmall?.fontSize
-                                : textTheme.headlineMedium?.fontSize,
+                          statsSubtitle,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                            letterSpacing: 0.2,
                           ),
                         ),
-                        
-                        SizedBox(height: isCompact ? 10 : 16),
-
-                        // Stats card
-                        LibraryStatsHeader(
-                          songCount: songCount,
-                          totalDuration: Duration(milliseconds: totalDurationMs),
-                          artistCount: artistCount,
-                          colorScheme: colorScheme,
-                          textTheme: textTheme,
-                          isCompact: isCompact,
-                        ),
-                        SizedBox(height: isCompact ? 8 : 12),
                       ],
                     ),
                   ),

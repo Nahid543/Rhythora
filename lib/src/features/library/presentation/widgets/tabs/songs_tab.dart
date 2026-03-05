@@ -142,6 +142,67 @@ class _SongsTabState extends State<SongsTab>
             ),
           ),
 
+          // Play All & Shuffle All buttons
+          if (filteredSongs.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        if (filteredSongs.isNotEmpty) {
+                          widget.onSongSelected(
+                            filteredSongs.first,
+                            filteredSongs,
+                            0,
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                      label: const Text('Play All'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        if (filteredSongs.isNotEmpty) {
+                          final shuffled = List<Song>.from(filteredSongs)
+                            ..shuffle();
+                          widget.onSongSelected(
+                            shuffled.first,
+                            shuffled,
+                            0,
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.shuffle_rounded, size: 20),
+                      label: const Text('Shuffle'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: colorScheme.secondaryContainer,
+                        foregroundColor: colorScheme.onSecondaryContainer,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (filteredSongs.isNotEmpty)
+            const SizedBox(height: 8),
+
           Expanded(
             child: filteredSongs.isEmpty
                 ? _buildNoResultsState(

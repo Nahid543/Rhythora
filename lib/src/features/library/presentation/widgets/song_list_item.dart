@@ -4,6 +4,12 @@ import '../../domain/entities/song.dart';
 import '../../data/playlist_repository.dart';
 import 'song_artwork.dart';
 
+String _formatDuration(Duration d) {
+  final m = d.inMinutes;
+  final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+  return '$m:$s';
+}
+
 class SongListItem extends StatelessWidget {
   final Song song;
   final VoidCallback onTap;
@@ -87,13 +93,27 @@ class SongListItem extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      song.artist,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            song.artist,
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurface.withValues(alpha: 0.7),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatDuration(song.duration),
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurface.withValues(alpha: 0.5),
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
