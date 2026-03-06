@@ -27,26 +27,16 @@ class LibraryFilterChip extends StatelessWidget {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          gradient: isActive && !isAddButton
-              ? LinearGradient(
-                  colors: [
-                    colorScheme.primary,
-                    colorScheme.primary.withValues(alpha: 0.8),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: isAddButton
-              ? Colors.transparent
-              : (isActive ? null : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)),
+          color: isActive && !isAddButton
+              ? colorScheme.primary // Elegant solid Indigo
+              : Colors.transparent, // Blends into pitch black background
           border: Border.all(
             color: isAddButton
                 ? colorScheme.primary
-                : (isActive ? Colors.transparent : colorScheme.outline.withValues(alpha: 0.5)),
+                : (isActive ? Colors.transparent : colorScheme.outline.withValues(alpha: 0.3)), // Subtle inactive outline
             width: isAddButton ? 1.5 : 1,
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(999), // Perfect pill shape
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -56,8 +46,8 @@ class LibraryFilterChip extends StatelessWidget {
                 icon,
                 size: 16,
                 color: isActive && !isAddButton
-                    ? colorScheme.onPrimary
-                    : (isAddButton ? colorScheme.primary : colorScheme.onSurface),
+                    ? Colors.white
+                    : (isAddButton ? colorScheme.primary : colorScheme.onSurface.withValues(alpha: 0.7)),
               ),
               const SizedBox(width: 6),
             ],
@@ -67,8 +57,8 @@ class LibraryFilterChip extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                 color: isActive && !isAddButton
-                    ? colorScheme.onPrimary
-                    : (isAddButton ? colorScheme.primary : colorScheme.onSurface),
+                    ? Colors.white
+                    : (isAddButton ? colorScheme.primary : colorScheme.onSurface.withValues(alpha: 0.7)),
               ),
             ),
           ],

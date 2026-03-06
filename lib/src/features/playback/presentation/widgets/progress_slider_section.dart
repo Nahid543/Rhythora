@@ -141,8 +141,8 @@ class _ProgressSliderSectionState extends State<ProgressSliderSection> {
                             child: CustomPaint(
                               painter: _WaveformPainter(
                                 progress: progress,
-                                activeColor: Colors.white, // Match demo pure white
-                                inactiveColor: Colors.white.withOpacity(0.3),
+                                activeColor: widget.colorScheme.onSurface,
+                                inactiveColor: widget.colorScheme.onSurface.withOpacity(0.3),
                                 totalBars: totalBars,
                               ),
                             ),
@@ -157,16 +157,16 @@ class _ProgressSliderSectionState extends State<ProgressSliderSection> {
                             child: Container(
                               width: 2,
                               height: 120, // Slightly shorter than the full box
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(2),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.5),
-                                    blurRadius: 4,
-                                  )
-                                ],
-                              ),
+                                decoration: BoxDecoration(
+                                  color: widget.colorScheme.onSurface,
+                                  borderRadius: BorderRadius.circular(2),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.5),
+                                      blurRadius: 4,
+                                    )
+                                  ],
+                                ),
                             ),
                           ),
                         ),
@@ -224,11 +224,11 @@ class _TimeBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black, // Solid black badge like in the demo
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -236,12 +236,12 @@ class _TimeBadge extends StatelessWidget {
       ),
       child: Text(
         time,
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: colorScheme.onSurface,
           fontSize: 11,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.5,
-          fontFeatures: [FontFeature.tabularFigures()],
+          fontFeatures: const [FontFeature.tabularFigures()],
         ),
       ),
     );

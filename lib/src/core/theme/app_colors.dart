@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const backgroundDark = Color(0xFF020617);
-  static const surfaceDark = Color(0xFF030712);
-  static const surfaceDarkElevated = Color(0xFF060A1A);
+  static const backgroundDark = Color(0xFF000000); // Pure Pitch Black (OLED friendly)
+  static const surfaceDark = Color(0xFF09090B);    // Sleek Zinc
+  static const surfaceDarkElevated = Color(0xFF18181B); // Lighter Zinc
 
-  static const primary = Color(0xFF8B5CF6);
-  static const secondary = Color(0xFF22D3EE);
+  static const primary = Color(0xFF6366F1); // Indigo
+  static const secondary = Color(0xFF14B8A6); // Teal
 
   static const textPrimaryDark = Color(0xFFF9FAFB);
   static const textSecondaryDark = Color(0xFF9CA3AF);

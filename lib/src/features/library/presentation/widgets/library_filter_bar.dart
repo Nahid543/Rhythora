@@ -48,12 +48,6 @@ class LibraryFilterBar extends StatelessWidget {
       height: 56,
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        border: Border(
-          bottom: BorderSide(
-            color: colorScheme.outline.withValues(alpha: 0.1),
-            width: 1,
-          ),
-        ),
       ),
       child: Row(
         children: [

@@ -37,7 +37,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
   double _verticalDragOffset = 0.0;
   double _horizontalDragOffset = 0.0;
   bool _isDragging = false;
-  bool _isHorizontalDrag = false;
 
   ColorScheme? _dynamicColorScheme;
 
@@ -175,27 +174,55 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     );
   }
 
-  // ─── Gesture handling ───────────────────────────────────────────────
+  // ─── Manual Threshold Gesture Handling ────────────────────────────────────
+
+  double _dragStartX = 0.0;
+  double _dragStartY = 0.0;
+  bool _dragAxisLocked = false;
+  bool _isHorizontalDrag = false;
+
+  void _handlePanDown(DragDownDetails details) {
+    _dragStartX = details.globalPosition.dx;
+    _dragStartY = details.globalPosition.dy;
+    _dragAxisLocked = false;
+    _isHorizontalDrag = false;
+    _horizontalDragOffset = 0.0;
+    _verticalDragOffset = 0.0;
+  }
 
   void _handlePanUpdate(DragUpdateDetails details) {
-    setState(() {
-      _isDragging = true;
-      if (!_isHorizontalDrag && _verticalDragOffset.abs() < 10) {
-        if (details.delta.dx.abs() > details.delta.dy.abs()) {
-          _isHorizontalDrag = true;
-        }
+    if (!_dragAxisLocked) {
+      final dx = details.globalPosition.dx - _dragStartX;
+      final dy = details.globalPosition.dy - _dragStartY;
+
+      // Wait until the user has dragged at least 15 logical pixels
+      if (dx.abs() > 15 || dy.abs() > 15) {
+        _dragAxisLocked = true;
+        _isHorizontalDrag = dx.abs() > dy.abs();
+        setState(() {
+          _isDragging = true;
+        });
+      } else {
+        // Still inside the 15px deadzone, do not move the UI yet.
+        return;
       }
+    }
+
+    setState(() {
       if (_isHorizontalDrag) {
         _horizontalDragOffset += details.delta.dx;
         _horizontalDragOffset = _horizontalDragOffset.clamp(-200.0, 200.0);
       } else {
         _verticalDragOffset += details.delta.dy;
+        // Only allow swiping downwards to dismiss
         _verticalDragOffset = _verticalDragOffset.clamp(0.0, 300.0);
       }
     });
   }
 
   void _handlePanEnd(DragEndDetails details) {
+    if (!_dragAxisLocked) return; // Released before passing threshold
+
     if (_isHorizontalDrag) {
       if (_horizontalDragOffset < -80) {
         HapticFeedback.mediumImpact();
@@ -205,18 +232,33 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
         HapticFeedback.mediumImpact();
         _player.skipToPrevious();
         _animatePageTransition();
+      } else {
+        setState(() {
+          _horizontalDragOffset = 0.0;
+          _isDragging = false;
+          _dragAxisLocked = false;
+        });
       }
     } else {
-      if (_verticalDragOffset > 120) {
+      if (_verticalDragOffset > 120 || details.velocity.pixelsPerSecond.dy > 300) {
         HapticFeedback.lightImpact();
         Navigator.of(context).pop();
         return;
       }
+      setState(() {
+        _verticalDragOffset = 0.0;
+        _isDragging = false;
+        _dragAxisLocked = false;
+      });
     }
+  }
+
+  void _handlePanCancel() {
     setState(() {
       _horizontalDragOffset = 0.0;
       _verticalDragOffset = 0.0;
       _isDragging = false;
+      _dragAxisLocked = false;
       _isHorizontalDrag = false;
     });
   }
@@ -226,7 +268,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
       setState(() {
         _horizontalDragOffset = 0.0;
         _isDragging = false;
-        _isHorizontalDrag = false;
+        _dragAxisLocked = false;
       });
     });
   }
@@ -310,8 +352,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
             extendBodyBehindAppBar: true,
             backgroundColor: Colors.transparent,
             body: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onPanDown: _handlePanDown,
               onPanUpdate: _handlePanUpdate,
               onPanEnd: _handlePanEnd,
+              onPanCancel: _handlePanCancel,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOut,
@@ -356,6 +401,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
         
         // Use dynamic color or fallback to theme
         final primaryColor = _dynamicColorScheme?.primary ?? colorScheme.primary;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
 
         return Container(
           width: double.infinity,
@@ -364,14 +410,23 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                // Top: Strongly tinted by the artwork, but still fairly dark
-                Color.lerp(Colors.black, primaryColor, 0.45)!,
-                // Middle: Fading quickly to pitch black
-                Color.lerp(Colors.black, primaryColor, 0.15)!,
-                // Bottom: Deep black background
-                const Color(0xFF0F0F1A), // Matching bottom nav bar
-              ],
+              colors: isDark 
+                ? [
+                    // Top: Strongly tinted by the artwork, but still fairly dark
+                    Color.lerp(Colors.black, primaryColor, 0.45)!,
+                    // Middle: Fading quickly to pitch black
+                    Color.lerp(Colors.black, primaryColor, 0.15)!,
+                    // Bottom: Deep black background
+                    colorScheme.surface, 
+                  ]
+                : [
+                    // Top: Brightly tinted by the artwork
+                    Color.lerp(Colors.white, primaryColor, 0.25)!,
+                    // Middle: Fading to pure white/surface
+                    Color.lerp(Colors.white, primaryColor, 0.05)!,
+                    // Bottom: Clean surface
+                    colorScheme.surface, 
+                  ],
               stops: const [0.0, 0.45, 0.9],
             ),
           ),
@@ -419,62 +474,112 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                           onMenuTap: () => _showActionsSheet(song),
                         ),
 
-                        // ── Song title & Artist ──
-                        SizedBox(
-                          width: double.infinity,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                child: Text(
-                                  song.title,
-                                  style: textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.5,
-                                    height: 1.2,
-                                    fontSize: isTablet ? 24 : 20,
-                                    color: Colors.white,
-                                  ),
-                                  textAlign: TextAlign.left,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                        // ── Song Title and Artist Pills ──
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isDark 
+                                    ? Colors.white.withOpacity(0.08)
+                                    : colorScheme.primary.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(24),
+                              child: Text(
+                                song.title,
+                                style: textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  color: colorScheme.onSurface,
                                 ),
-                                child: Text(
-                                  _buildSubtitle(song),
-                                  style: textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white.withOpacity(0.8),
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                  textAlign: TextAlign.left,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.black.withOpacity(0.2)
+                                    : colorScheme.surfaceTint.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _buildSubtitle(song),
+                                style: textTheme.titleMedium?.copyWith(
+                                  color: colorScheme.onSurface.withOpacity(0.7),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        // ── Quick Actions Row ──
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _ActionChip(
+                              icon: Icons.equalizer_rounded,
+                              tooltip: 'Audio Quality',
+                              onPressed: () => _showAudioStatsSheet(context, song),
+                              colorScheme: colorScheme,
+                            ),
+                            const SizedBox(width: 12),
+                            _ActionChip(
+                              icon: Icons.timer_outlined,
+                              tooltip: 'Sleep Timer',
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text('Sleep Timer coming soon!'),
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                );
+                              },
+                              colorScheme: colorScheme,
+                            ),
+                            
+                            const SizedBox(width: 48), // Massive center gap matching demo
+                            
+                            ValueListenableBuilder<RepeatMode>(
+                              valueListenable: _player.repeatMode,
+                              builder: (context, mode, _) {
+                                return _ActionChip(
+                                  icon: mode == RepeatMode.one
+                                      ? Icons.repeat_one_rounded
+                                      : Icons.repeat_rounded,
+                                  isActive: mode != RepeatMode.off,
+                                  tooltip: 'Repeat',
+                                  onPressed: _player.toggleRepeatMode,
+                                  colorScheme: colorScheme,
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 12),
+                            ValueListenableBuilder<bool>(
+                              valueListenable: _player.isShuffleEnabled,
+                              builder: (context, isShuffle, _) {
+                                return _ActionChip(
+                                  icon: Icons.shuffle_rounded,
+                                  isActive: isShuffle,
+                                  tooltip: 'Shuffle',
+                                  onPressed: _player.toggleShuffle,
+                                  colorScheme: colorScheme,
+                                );
+                              },
+                            ),
+                          ],
                         ),
 
-                        // ── 4 action icons ──
-                        _ActionRow(
-                          player: _player,
-                          colorScheme: colorScheme,
-                        ),
-
-                        // ── Waveform progress & Controls stacked cleanly ──
+                        // ── Seek Bar & Playback Controls Overlay ──
+                        // Layering the playback controls strictly over the interactive waveform
                         ProgressSliderSection(
                           player: _player,
                           colorScheme: colorScheme,
@@ -497,47 +602,28 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                   ),
                 ),
 
-                // ── Bottom Nav Bar Mock (matching demo) ──
+                // Floating Nav Bar at the very bottom
                 _BottomNavBar(
                   colorScheme: colorScheme,
-                  onHome: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.pop(context);
-                  },
-                  onStats: () {
-                    HapticFeedback.lightImpact();
-                    _showAudioStatsSheet(context, song);
-                  },
-                  onSearch: () {
-                    HapticFeedback.lightImpact();
+                  onQueue: widget.onQueueTap ?? () {},
+                  onLyrics: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Row(
-                          children: [
-                            Icon(Icons.search_rounded, color: colorScheme.surface),
-                            const SizedBox(width: 12),
-                            const Text('Search anywhere to play next...'),
-                          ],
-                        ),
+                        content: const Text('Lyrics integration coming soon!'),
                         behavior: SnackBarBehavior.floating,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     );
                   },
-                  onMenu: () {
-                    HapticFeedback.lightImpact();
-                    if (widget.onQueueTap != null) {
-                      Navigator.pop(context); // Close player to show queue
-                      widget.onQueueTap!();
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Up Next / Queue coming soon'),
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      );
-                    }
+                  onPlaylist: () => _showActionsSheet(song),
+                  onShare: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Sharing ${song.title}...'),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -821,172 +907,6 @@ class _SmallIconButton extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Action Row — 4 icons: equalizer, timer, repeat, shuffle
-// ═══════════════════════════════════════════════════════════════════════════
-
-class _ActionRow extends StatelessWidget {
-  final AudioPlayerManager player;
-  final ColorScheme colorScheme;
-
-  const _ActionRow({
-    required this.player,
-    required this.colorScheme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // Left Group (Eq, Timer)
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _ActionChip(
-              icon: Icons.equalizer_rounded,
-              tooltip: 'Equalizer',
-              colorScheme: colorScheme,
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Equalizer coming soon'),
-                    behavior: SnackBarBehavior.floating,
-                    duration: const Duration(seconds: 1),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(width: 16),
-            ValueListenableBuilder<Duration?>(
-              valueListenable: player.sleepTimerRemaining,
-              builder: (context, remaining, _) {
-                final hasTimer = remaining != null;
-                return _ActionChip(
-                  icon: Icons.access_time_rounded,
-                  tooltip: hasTimer ? 'Sleep Timer Active' : 'Sleep Timer',
-                  isActive: hasTimer,
-                  colorScheme: colorScheme,
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    _showSleepTimerSheet(context);
-                  },
-                );
-              },
-            ),
-          ],
-        ),
-
-        // Right Group (Repeat, Shuffle)
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ValueListenableBuilder<RepeatMode>(
-              valueListenable: player.repeatMode,
-              builder: (context, mode, _) {
-                return _ActionChip(
-                  icon: mode == RepeatMode.one
-                      ? Icons.repeat_one_rounded
-                      : Icons.repeat_rounded,
-                  isActive: mode != RepeatMode.off,
-                  colorScheme: colorScheme,
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    player.toggleRepeatMode();
-                  },
-                );
-              },
-            ),
-            const SizedBox(width: 16),
-            ValueListenableBuilder<bool>(
-              valueListenable: player.isShuffleEnabled,
-              builder: (context, shuffleOn, _) {
-                return _ActionChip(
-                  icon: Icons.shuffle_rounded,
-                  isActive: shuffleOn,
-                  colorScheme: colorScheme,
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    player.toggleShuffle();
-                  },
-                );
-              },
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  void _showSleepTimerSheet(BuildContext context) {
-    final options = [5, 10, 15, 30, 45, 60];
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colorScheme.onSurface.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Sleep Timer',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 16),
-            if (player.hasSleepTimer) ...[
-              ListTile(
-                leading: Icon(Icons.timer_off, color: colorScheme.error),
-                title: const Text('Cancel Timer'),
-                onTap: () {
-                  player.cancelSleepTimer();
-                  Navigator.pop(ctx);
-                },
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              const SizedBox(height: 8),
-            ],
-            ...options.map(
-              (m) => ListTile(
-                leading:
-                    Icon(Icons.bedtime_outlined, color: colorScheme.primary),
-                title: Text('$m minutes'),
-                onTap: () {
-                  player.setSleepTimer(Duration(minutes: m));
-                  Navigator.pop(ctx);
-                },
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _ActionChip extends StatefulWidget {
   final IconData icon;
@@ -1085,61 +1005,71 @@ class _ActionChipState extends State<_ActionChip>
 
 class _BottomNavBar extends StatelessWidget {
   final ColorScheme colorScheme;
-  final VoidCallback onHome;
-  final VoidCallback onStats;
-  final VoidCallback onSearch;
-  final VoidCallback onMenu;
+  final VoidCallback onQueue;
+  final VoidCallback onLyrics;
+  final VoidCallback onPlaylist;
+  final VoidCallback onShare;
 
   const _BottomNavBar({
     required this.colorScheme,
-    required this.onHome,
-    required this.onStats,
-    required this.onSearch,
-    required this.onMenu,
+    required this.onQueue,
+    required this.onLyrics,
+    required this.onPlaylist,
+    required this.onShare,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Dynamic background matching the surface color for perfect Light/Dark mode integration
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       margin: const EdgeInsets.only(left: 12, right: 12, bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F0F1A), // Matches exactly demo dark bottom look
+        color: colorScheme.surface, 
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
+          if (isDark)
+            BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            )
+          else
+            BoxShadow(
+              color: colorScheme.shadow.withOpacity(0.05),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
         ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _NavIcon(
-            icon: Icons.grid_view_rounded,
-            isActive: true,
+            icon: Icons.queue_music_rounded,
+            isActive: true, // Queue is the primary contextual view from here
             colorScheme: colorScheme,
-            onPressed: onHome,
+            onPressed: onQueue,
           ),
           _NavIcon(
-            icon: Icons.bar_chart_rounded,
+            icon: Icons.lyrics_rounded,
             isActive: false,
             colorScheme: colorScheme,
-            onPressed: onStats,
+            onPressed: onLyrics,
           ),
           _NavIcon(
-            icon: Icons.search_rounded,
+            icon: Icons.playlist_add_rounded,
             isActive: false,
             colorScheme: colorScheme,
-            onPressed: onSearch,
+            onPressed: onPlaylist,
           ),
           _NavIcon(
-            icon: Icons.menu_rounded,
+            icon: Icons.share_rounded,
             isActive: false,
             colorScheme: colorScheme,
-            onPressed: onMenu,
+            onPressed: onShare,
           ),
         ],
       ),
