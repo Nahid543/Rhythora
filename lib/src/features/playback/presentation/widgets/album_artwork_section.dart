@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:on_audio_query/on_audio_query.dart';
 import 'dart:math' as math;
+import 'dart:io';
 
 import '../../../library/domain/entities/song.dart';
 import '../../data/audio_player_manager.dart';
+import '../../../library/data/local_music_loader.dart';
 
 class AlbumArtworkSection extends StatefulWidget {
   final Song song;
@@ -32,14 +33,23 @@ class _AlbumArtworkSectionState extends State<AlbumArtworkSection>
   late Animation<double> _pulseAnimation;
 
   final AudioPlayerManager _player = AudioPlayerManager.instance;
+  
+  String? _resolvedPath;
+  bool _isLoading = false;
+  bool _loadFailed = false;
 
   @override
   void initState() {
     super.initState();
 
+    _resolvedPath = widget.song.albumArtPath;
+    if (_resolvedPath == null) {
+      _loadArtworkLazily();
+    }
+
     _scaleController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 600),
     );
     _scaleAnimation = CurvedAnimation(
       parent: _scaleController,
@@ -48,9 +58,9 @@ class _AlbumArtworkSectionState extends State<AlbumArtworkSection>
 
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 3000),
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
+    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
@@ -65,7 +75,6 @@ class _AlbumArtworkSectionState extends State<AlbumArtworkSection>
     )..repeat();
 
     _scaleController.forward();
-
     _player.isPlaying.addListener(_onPlaybackChanged);
   }
 
@@ -76,6 +85,44 @@ class _AlbumArtworkSectionState extends State<AlbumArtworkSection>
     } else {
       if (!_pulseController.isAnimating) _pulseController.repeat(reverse: true);
       if (!_waveController.isAnimating) _waveController.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(AlbumArtworkSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.song.id != widget.song.id ||
+        oldWidget.song.albumArtPath != widget.song.albumArtPath) {
+      _resolvedPath = widget.song.albumArtPath;
+      _loadFailed = false;
+      if (_resolvedPath == null) {
+        _loadArtworkLazily();
+      }
+    }
+  }
+
+  Future<void> _loadArtworkLazily() async {
+    if (_isLoading) return;
+    _isLoading = true;
+
+    try {
+      final songIdInt = int.tryParse(widget.song.id);
+      if (songIdInt == null) {
+        _isLoading = false;
+        return;
+      }
+
+      final path = await LocalMusicLoader.instance.getOrCacheArtwork(songIdInt);
+      if (mounted && path != null) {
+        setState(() {
+          _resolvedPath = path;
+          _isLoading = false;
+        });
+      } else {
+        _isLoading = false;
+      }
+    } catch (_) {
+      _isLoading = false;
     }
   }
 
@@ -91,88 +138,97 @@ class _AlbumArtworkSectionState extends State<AlbumArtworkSection>
 
   @override
   Widget build(BuildContext context) {
-    final artworkId = int.tryParse(widget.song.id) ?? 0;
     final size = MediaQuery.of(context).size;
     final isTablet = size.width > 600;
-    final double fallbackSize = isTablet ? 380.0 : size.width * 0.82;
-    final double maxByViewport =
-        isTablet ? size.width * 0.65 : size.width * 0.95;
-    final double minSize = isTablet ? 220.0 : 180.0;
+
+    // Use almost the full width of the screen, matching the demo exactly
+    final double defaultMaxSize =
+        isTablet ? size.width * 0.55 : size.width * 0.85;
+    final double minSize = isTablet ? 240.0 : 200.0;
     final double artworkSize = widget.maxSize != null
-        ? widget.maxSize!.clamp(minSize, maxByViewport)
-        : fallbackSize.clamp(minSize, maxByViewport);
+        ? widget.maxSize!.clamp(minSize, defaultMaxSize)
+        : defaultMaxSize.clamp(minSize, defaultMaxSize);
+
+    final borderRadius = BorderRadius.circular(isTablet ? 32 : 24);
 
     return Center(
       child: ScaleTransition(
         scale: _scaleAnimation,
-        child: SizedBox(
-          width: artworkSize,
-          height: artworkSize,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              AnimatedBuilder(
-                animation: _pulseAnimation,
-                builder: (context, child) {
-                  return Container(
-                    width: artworkSize * 1.15,
-                    height: artworkSize * 1.15,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          widget.colorScheme.primary.withOpacity(
-                            0.2 * _pulseAnimation.value,
-                          ),
-                          widget.colorScheme.secondary.withOpacity(
-                            0.1 * _pulseAnimation.value,
-                          ),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+        child: AnimatedBuilder(
+          animation: _pulseAnimation,
+          builder: (context, child) {
+            final shadowOpacity = 0.25 * _pulseAnimation.value;
+            final spread = 12 * _pulseAnimation.value;
 
-              Hero(
-                tag: 'artwork_${widget.song.id}',
-                child: Container(
-                  width: artworkSize,
-                  height: artworkSize,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: widget.colorScheme.primary.withOpacity(0.25),
-                        blurRadius: 30,
-                        spreadRadius: 3,
-                        offset: const Offset(0, 10),
+            return Hero(
+              tag: 'artwork_${widget.song.id}',
+              child: Container(
+                width: artworkSize,
+                height: artworkSize,
+                decoration: BoxDecoration(
+                  borderRadius: borderRadius,
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.colorScheme.primary.withOpacity(shadowOpacity),
+                      blurRadius: 40,
+                      spreadRadius: spread,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: borderRadius,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                        // Load artwork from file if available, otherwise show fallback
+                        if (_resolvedPath != null && !_loadFailed)
+                          Image.file(
+                            File(_resolvedPath!),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted) setState(() => _loadFailed = true);
+                              });
+                              return _StunningNoArtwork(
+                                colorScheme: widget.colorScheme,
+                                rotateController: _rotateController,
+                                waveController: _waveController,
+                                pulseAnimation: _pulseAnimation,
+                                isPlaying: _player.isPlaying,
+                              );
+                            },
+                          )
+                        else
+                          _StunningNoArtwork(
+                            colorScheme: widget.colorScheme,
+                            rotateController: _rotateController,
+                            waveController: _waveController,
+                            pulseAnimation: _pulseAnimation,
+                            isPlaying: _player.isPlaying,
+                          ),
+                      // Subtle inner shadow overlay for depth
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: borderRadius,
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.1),
+                              Colors.transparent,
+                              Colors.black.withOpacity(0.35),
+                            ],
+                            stops: const [0.0, 0.5, 1.0],
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: QueryArtworkWidget(
-                      id: artworkId,
-                      type: ArtworkType.AUDIO,
-                      artworkFit: BoxFit.cover,
-                      artworkBorder: BorderRadius.zero,
-                      quality: 100,
-                      nullArtworkWidget: _StunningNoArtwork(
-                        size: artworkSize,
-                        colorScheme: widget.colorScheme,
-                        rotateController: _rotateController,
-                        waveController: _waveController,
-                        pulseAnimation: _pulseAnimation,
-                        isPlaying: _player.isPlaying,
-                      ),
-                    ),
-                  ),
                 ),
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -180,7 +236,6 @@ class _AlbumArtworkSectionState extends State<AlbumArtworkSection>
 }
 
 class _StunningNoArtwork extends StatelessWidget {
-  final double size;
   final ColorScheme colorScheme;
   final AnimationController rotateController;
   final AnimationController waveController;
@@ -188,7 +243,6 @@ class _StunningNoArtwork extends StatelessWidget {
   final ValueNotifier<bool> isPlaying;
 
   const _StunningNoArtwork({
-    required this.size,
     required this.colorScheme,
     required this.rotateController,
     required this.waveController,
@@ -199,7 +253,9 @@ class _StunningNoArtwork extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Stack(
+      fit: StackFit.expand,
       children: [
+        // Rotating gradient background
         AnimatedBuilder(
           animation: rotateController,
           builder: (context, child) {
@@ -212,7 +268,7 @@ class _StunningNoArtwork extends StatelessWidget {
                     colorScheme.tertiary,
                     colorScheme.primary,
                   ],
-                  stops: const [0.0, 0.4, 0.7, 1.0],
+                  stops: const [0.0, 0.35, 0.7, 1.0],
                   transform: GradientRotation(
                     rotateController.value * 2 * math.pi,
                   ),
@@ -222,40 +278,36 @@ class _StunningNoArtwork extends StatelessWidget {
           },
         ),
 
+        // Wave circles
         ValueListenableBuilder<bool>(
           valueListenable: isPlaying,
           builder: (context, playing, _) {
-            return playing
-                ? AnimatedBuilder(
-                    animation: waveController,
-                    builder: (context, child) {
-                      return CustomPaint(
-                        size: Size(size, size),
-                        painter: _WaveCirclesPainter(
-                          animation: waveController.value,
-                          color: Colors.white.withOpacity(0.3),
-                        ),
-                      );
-                    },
-                  )
-                : const SizedBox.shrink();
+            if (!playing) return const SizedBox.shrink();
+            return AnimatedBuilder(
+              animation: waveController,
+              builder: (context, child) {
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    return CustomPaint(
+                      size: Size(constraints.maxWidth, constraints.maxHeight),
+                      painter: _WaveCirclesPainter(
+                        animation: waveController.value,
+                        color: Colors.white.withOpacity(0.25),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
           },
         ),
 
+        // Dark overlay
         Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.black.withOpacity(0.2),
-                Colors.transparent,
-                Colors.black.withOpacity(0.3),
-              ],
-            ),
-          ),
+          color: Colors.black.withOpacity(0.15),
         ),
 
+        // Music icon
         Center(
           child: AnimatedBuilder(
             animation: pulseAnimation,
@@ -264,14 +316,14 @@ class _StunningNoArtwork extends StatelessWidget {
                 alignment: Alignment.center,
                 children: [
                   Container(
-                    width: size * 0.45,
-                    height: size * 0.45,
+                    width: 120,
+                    height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          Colors.white.withOpacity(0.25 * pulseAnimation.value),
-                          Colors.white.withOpacity(0.1 * pulseAnimation.value),
+                          Colors.white.withOpacity(0.2 * pulseAnimation.value),
+                          Colors.white.withOpacity(0.05 * pulseAnimation.value),
                           Colors.transparent,
                         ],
                       ),
@@ -279,22 +331,17 @@ class _StunningNoArtwork extends StatelessWidget {
                   ),
                   Icon(
                     Icons.music_note_rounded,
-                    size: size * 0.36,
-                    color: Colors.white.withOpacity(0.2),
-                  ),
-                  Icon(
-                    Icons.music_note_rounded,
-                    size: size * 0.3,
+                    size: 72,
                     color: Colors.white,
                     shadows: [
                       Shadow(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withOpacity(0.4),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
                       Shadow(
-                        color: colorScheme.primary.withOpacity(0.6),
-                        blurRadius: 25,
+                        color: colorScheme.primary.withOpacity(0.5),
+                        blurRadius: 20,
                       ),
                     ],
                   ),
@@ -302,26 +349,6 @@ class _StunningNoArtwork extends StatelessWidget {
               );
             },
           ),
-        ),
-
-        ValueListenableBuilder<bool>(
-          valueListenable: isPlaying,
-          builder: (context, playing, _) {
-            return playing
-                ? AnimatedBuilder(
-                    animation: waveController,
-                    builder: (context, child) {
-                      return CustomPaint(
-                        size: Size(size, size),
-                        painter: _FloatingParticlesPainter(
-                          animation: waveController.value,
-                          color: Colors.white.withOpacity(0.5),
-                        ),
-                      );
-                    },
-                  )
-                : const SizedBox.shrink();
-          },
         ),
       ],
     );
@@ -337,17 +364,18 @@ class _WaveCirclesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    const circleCount = 4;
+    final maxRadius = math.max(size.width, size.height) * 0.8;
+    const circleCount = 3;
 
     for (int i = 0; i < circleCount; i++) {
-      final progress = (animation + i * 0.25) % 1.0;
-      final radius = size.width * 0.15 * (1 + progress * 2.5);
-      final opacity = (1 - progress) * 0.4;
+      final progress = (animation + i * 0.33) % 1.0;
+      final radius = maxRadius * progress;
+      final opacity = (1 - progress) * 0.5;
 
       final paint = Paint()
         ..color = color.withOpacity(opacity)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5;
+        ..strokeWidth = 2.0;
 
       canvas.drawCircle(center, radius, paint);
     }
@@ -355,42 +383,6 @@ class _WaveCirclesPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _WaveCirclesPainter oldDelegate) {
-    return oldDelegate.animation != animation;
-  }
-}
-
-class _FloatingParticlesPainter extends CustomPainter {
-  final double animation;
-  final Color color;
-
-  _FloatingParticlesPainter({required this.animation, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..style = PaintingStyle.fill;
-
-    const particleCount = 15;
-
-    for (int i = 0; i < particleCount; i++) {
-      final angle = (i / particleCount) * 2 * math.pi;
-      final progress = (animation + i * 0.067) % 1.0;
-
-      final distance = size.width * 0.2 * progress;
-      final x =
-          size.width / 2 + math.cos(angle + animation * math.pi) * distance;
-      final y =
-          size.height / 2 + math.sin(angle + animation * math.pi) * distance;
-
-      final opacity = (1 - progress) * 0.7;
-      final particleSize = 2.5 * (1 - progress * 0.4);
-
-      paint.color = color.withOpacity(opacity);
-      canvas.drawCircle(Offset(x, y), particleSize, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _FloatingParticlesPainter oldDelegate) {
     return oldDelegate.animation != animation;
   }
 }

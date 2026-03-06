@@ -477,8 +477,17 @@ class AudioPlayerManager {
   Future<void> skipToNext() async {
     try {
       await _ensureInitialized();
+      
+      // Temporarily disable loop mode to correctly check for/skip to the actual next track
+      if (repeatMode.value == RepeatMode.one) {
+        await _player.setLoopMode(LoopMode.off);
+      }
+
       if (!_player.hasNext) {
         debugPrint('⚠️ No next song available');
+        if (repeatMode.value == RepeatMode.one) {
+          await _player.setLoopMode(LoopMode.one);
+        }
         return;
       }
 
@@ -489,6 +498,10 @@ class AudioPlayerManager {
 
       _isManualSeek = true;
       await _player.seekToNext();
+      
+      if (repeatMode.value == RepeatMode.one) {
+        await _player.setLoopMode(LoopMode.one);
+      }
 
       await Future.delayed(const Duration(milliseconds: 100));
 
@@ -512,8 +525,15 @@ class AudioPlayerManager {
         return;
       }
 
+      if (repeatMode.value == RepeatMode.one) {
+        await _player.setLoopMode(LoopMode.off);
+      }
+
       if (!_player.hasPrevious) {
         debugPrint('⚠️ No previous song available');
+        if (repeatMode.value == RepeatMode.one) {
+          await _player.setLoopMode(LoopMode.one);
+        }
         return;
       }
 
@@ -524,6 +544,10 @@ class AudioPlayerManager {
 
       _isManualSeek = true;
       await _player.seekToPrevious();
+
+      if (repeatMode.value == RepeatMode.one) {
+        await _player.setLoopMode(LoopMode.one);
+      }
 
       await Future.delayed(const Duration(milliseconds: 100));
 

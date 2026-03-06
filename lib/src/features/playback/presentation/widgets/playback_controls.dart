@@ -1,9 +1,8 @@
 
-import 'package:flutter/material.dart' hide RepeatMode;
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/audio_player_manager.dart';
-import '../../domain/repeat_mode.dart';
 
 class PlaybackControls extends StatelessWidget {
   final AudioPlayerManager player;
@@ -29,29 +28,34 @@ class PlaybackControls extends StatelessWidget {
       builder: (context, isPlaying, _) {
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            ValueListenableBuilder<bool>(
-              valueListenable: player.isShuffleEnabled,
-              builder: (context, isShuffleEnabled, __) {
-                return _ControlButton(
-                  icon: Icons.shuffle_rounded,
-                  isActive: isShuffleEnabled,
-                  tooltip: isShuffleEnabled ? 'Shuffle On' : 'Shuffle Off',
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    player.toggleShuffle();
-                  },
-                  colorScheme: colorScheme,
-                  isTablet: isTablet,
+            // Fast rewind (10s back)
+            _CircleControlButton(
+              icon: Icons.fast_rewind_rounded,
+              iconSize: isTablet ? 30 : 26,
+              buttonSize: isTablet ? 52 : 46,
+              isSolid: false,
+              tooltip: 'Rewind 10s',
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                final pos = player.position.value;
+                final newPos = pos - const Duration(seconds: 10);
+                player.seek(
+                  newPos < Duration.zero ? Duration.zero : newPos,
                 );
               },
+              colorScheme: colorScheme,
             ),
 
-            SizedBox(width: isTablet ? 20 : 16),
+            SizedBox(width: isTablet ? 16 : 12),
 
-            _ControlButton(
+            // Previous
+            _CircleControlButton(
               icon: Icons.skip_previous_rounded,
-              size: isTablet ? 44 : 40,
+              iconSize: isTablet ? 36 : 30,
+              buttonSize: isTablet ? 60 : 54,
+              isSolid: true,
               tooltip: 'Previous',
               onPressed: onPrevious != null
                   ? () {
@@ -60,11 +64,11 @@ class PlaybackControls extends StatelessWidget {
                     }
                   : null,
               colorScheme: colorScheme,
-              isTablet: isTablet,
             ),
 
-            SizedBox(width: isTablet ? 24 : 20),
+            SizedBox(width: isTablet ? 18 : 14),
 
+            // Play / Pause — largest button
             _PlayPauseButton(
               isPlaying: isPlaying,
               onPressed: () {
@@ -79,11 +83,14 @@ class PlaybackControls extends StatelessWidget {
               isTablet: isTablet,
             ),
 
-            SizedBox(width: isTablet ? 24 : 20),
+            SizedBox(width: isTablet ? 18 : 14),
 
-            _ControlButton(
+            // Next
+            _CircleControlButton(
               icon: Icons.skip_next_rounded,
-              size: isTablet ? 44 : 40,
+              iconSize: isTablet ? 36 : 30,
+              buttonSize: isTablet ? 60 : 54,
+              isSolid: true,
               tooltip: 'Next',
               onPressed: onNext != null
                   ? () {
@@ -92,83 +99,58 @@ class PlaybackControls extends StatelessWidget {
                     }
                   : null,
               colorScheme: colorScheme,
-              isTablet: isTablet,
             ),
 
-            SizedBox(width: isTablet ? 20 : 16),
+            SizedBox(width: isTablet ? 16 : 12),
 
-            ValueListenableBuilder<RepeatMode>(
-              valueListenable: player.repeatMode,
-              builder: (context, repeatMode, _) {
-                return _ControlButton(
-                  icon: _getRepeatIcon(repeatMode),
-                  isActive: repeatMode != RepeatMode.off,
-                  tooltip: _getRepeatTooltip(repeatMode),
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    player.toggleRepeatMode();
-                  },
-                  colorScheme: colorScheme,
-                  badge: repeatMode == RepeatMode.one ? '1' : null,
-                  isTablet: isTablet,
-                );
+            // Fast forward (10s ahead)
+            _CircleControlButton(
+              icon: Icons.fast_forward_rounded,
+              iconSize: isTablet ? 30 : 26,
+              buttonSize: isTablet ? 52 : 46,
+              isSolid: false,
+              tooltip: 'Forward 10s',
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                final pos = player.position.value;
+                final dur = player.duration.value;
+                final newPos = pos + const Duration(seconds: 10);
+                player.seek(newPos > dur ? dur : newPos);
               },
+              colorScheme: colorScheme,
             ),
           ],
         );
       },
     );
   }
-
-  IconData _getRepeatIcon(RepeatMode mode) {
-    switch (mode) {
-      case RepeatMode.off:
-        return Icons.repeat_rounded;
-      case RepeatMode.all:
-        return Icons.repeat_rounded;
-      case RepeatMode.one:
-        return Icons.repeat_one_rounded;
-    }
-  }
-
-  String _getRepeatTooltip(RepeatMode mode) {
-    switch (mode) {
-      case RepeatMode.off:
-        return 'Repeat Off';
-      case RepeatMode.all:
-        return 'Repeat All';
-      case RepeatMode.one:
-        return 'Repeat One';
-    }
-  }
 }
 
-class _ControlButton extends StatefulWidget {
+/// A circle button used for rewind, previous, next, forward.
+class _CircleControlButton extends StatefulWidget {
   final IconData icon;
-  final bool isActive;
+  final double iconSize;
+  final double buttonSize;
+  final bool isSolid;
   final String? tooltip;
   final VoidCallback? onPressed;
-  final double size;
   final ColorScheme colorScheme;
-  final String? badge;
-  final bool isTablet;
 
-  const _ControlButton({
+  const _CircleControlButton({
     required this.icon,
-    this.isActive = false,
+    required this.iconSize,
+    required this.buttonSize,
+    required this.isSolid,
     this.tooltip,
     required this.onPressed,
-    this.size = 28,
     required this.colorScheme,
-    this.badge,
-    this.isTablet = false,
   });
 
   @override
-  State<_ControlButton> createState() => _ControlButtonState();
+  State<_CircleControlButton> createState() => _CircleControlButtonState();
 }
 
-class _ControlButtonState extends State<_ControlButton>
+class _CircleControlButtonState extends State<_CircleControlButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
@@ -206,60 +188,32 @@ class _ControlButtonState extends State<_ControlButton>
       builder: (context, child) {
         return Transform.scale(
           scale: _scaleAnimation.value,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _handleTap,
-              borderRadius: BorderRadius.circular(50),
-              child: Container(
-                padding: EdgeInsets.all(widget.isTablet ? 10 : 8),
-                decoration: widget.isActive
-                    ? BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: widget.colorScheme.primaryContainer.withOpacity(
-                          0.3,
+          child: GestureDetector(
+            onTap: _handleTap,
+            child: Container(
+              width: widget.buttonSize,
+              height: widget.buttonSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.isSolid
+                    ? Colors.black
+                    : Colors.white.withOpacity(0.1),
+                boxShadow: widget.isSolid
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
-                      )
+                      ]
                     : null,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Icon(
-                      widget.icon,
-                      size: widget.size,
-                      color: widget.isActive
-                          ? widget.colorScheme.primary
-                          : widget.onPressed != null
-                          ? widget.colorScheme.onSurface.withOpacity(0.8)
-                          : widget.colorScheme.onSurface.withOpacity(0.3),
-                    ),
-                    if (widget.badge != null)
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: widget.colorScheme.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 14,
-                            minHeight: 14,
-                          ),
-                          child: Text(
-                            widget.badge!,
-                            style: TextStyle(
-                              color: widget.colorScheme.onPrimary,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+              ),
+              child: Icon(
+                widget.icon,
+                size: widget.iconSize,
+                color: widget.onPressed != null
+                    ? Colors.white
+                    : Colors.white.withOpacity(0.3),
               ),
             ),
           ),
@@ -270,11 +224,11 @@ class _ControlButtonState extends State<_ControlButton>
     if (widget.tooltip != null) {
       return Tooltip(message: widget.tooltip!, child: button);
     }
-
     return button;
   }
 }
 
+/// The main play/pause button — largest, solid black.
 class _PlayPauseButton extends StatefulWidget {
   final bool isPlaying;
   final VoidCallback onPressed;
@@ -324,8 +278,8 @@ class _PlayPauseButtonState extends State<_PlayPauseButton>
 
   @override
   Widget build(BuildContext context) {
-    final buttonSize = widget.isTablet ? 80.0 : 72.0;
-    final iconSize = widget.isTablet ? 44.0 : 40.0;
+    final buttonSize = widget.isTablet ? 90.0 : 80.0;
+    final iconSize = widget.isTablet ? 48.0 : 42.0;
 
     return Tooltip(
       message: widget.isPlaying ? 'Pause' : 'Play',
@@ -341,26 +295,13 @@ class _PlayPauseButtonState extends State<_PlayPauseButton>
                 height: buttonSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      widget.colorScheme.primary,
-                      widget.colorScheme.secondary,
-                    ],
-                  ),
+                  color: Colors.black, // Match demo pure black
                   boxShadow: [
                     BoxShadow(
-                      color: widget.colorScheme.primary.withOpacity(0.4),
-                      blurRadius: 24,
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 16,
                       spreadRadius: 2,
                       offset: const Offset(0, 8),
-                    ),
-                    BoxShadow(
-                      color: widget.colorScheme.secondary.withOpacity(0.2),
-                      blurRadius: 16,
-                      spreadRadius: 1,
-                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
@@ -378,10 +319,7 @@ class _PlayPauseButtonState extends State<_PlayPauseButton>
                         : Icons.play_arrow_rounded,
                     key: ValueKey(widget.isPlaying),
                     size: iconSize,
-                    color: Colors.white,
-                    shadows: const [
-                      Shadow(color: Colors.black26, blurRadius: 4),
-                    ],
+                    color: Colors.white, // Match demo pure white icon
                   ),
                 ),
               ),
