@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../../library/domain/entities/song.dart';
@@ -26,7 +27,9 @@ class QuickActionsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
+        // Make the Library button slightly more prominent as requested
         Expanded(
+          flex: 12,
           child: QuickActionButton(
             icon: Icons.library_music_rounded,
             label: 'Library',
@@ -35,10 +38,12 @@ class QuickActionsRow extends StatelessWidget {
             textTheme: textTheme,
             isTablet: isTablet,
             delay: 0,
+            isPrimary: true,
           ),
         ),
         SizedBox(width: isTablet ? 16 : 12),
         Expanded(
+          flex: 10,
           child: QuickActionButton(
             icon: Icons.queue_music_rounded,
             label: 'Queue',
@@ -51,9 +56,10 @@ class QuickActionsRow extends StatelessWidget {
         ),
         SizedBox(width: isTablet ? 16 : 12),
         Expanded(
+          flex: 10,
           child: QuickActionButton(
             icon: Icons.play_circle_rounded,
-            label: 'Now playing',
+            label: 'Playing',
             onTap: currentSong != null ? onOpenNowPlaying : null,
             colorScheme: colorScheme,
             textTheme: textTheme,
@@ -74,6 +80,7 @@ class QuickActionButton extends StatefulWidget {
   final TextTheme textTheme;
   final bool isTablet;
   final int delay;
+  final bool isPrimary;
 
   const QuickActionButton({
     super.key,
@@ -84,6 +91,7 @@ class QuickActionButton extends StatefulWidget {
     required this.textTheme,
     required this.isTablet,
     this.delay = 0,
+    this.isPrimary = false,
   });
 
   @override
@@ -124,6 +132,7 @@ class _QuickActionButtonState extends State<QuickActionButton>
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onTap != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -133,48 +142,98 @@ class _QuickActionButtonState extends State<QuickActionButton>
           color: Colors.transparent,
           child: InkWell(
             onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(20),
-            child: Ink(
+            borderRadius: BorderRadius.circular(24),
+            child: Container(
               padding: EdgeInsets.symmetric(
-                horizontal: widget.isTablet ? 16 : 12,
-                vertical: widget.isTablet ? 18 : 14,
+                horizontal: widget.isTablet ? 16 : 8,
+                vertical: widget.isTablet ? 20 : 16,
               ),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                color: enabled
-                    ? widget.colorScheme.surfaceVariant.withOpacity(0.6)
-                    : widget.colorScheme.surfaceVariant.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(24),
+                gradient: widget.isPrimary && enabled
+                    ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          widget.colorScheme.primary.withOpacity(isDark ? 0.8 : 0.15),
+                          widget.colorScheme.secondary.withOpacity(isDark ? 0.6 : 0.05),
+                        ],
+                      )
+                    : LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: enabled
+                            ? [
+                                widget.colorScheme.surfaceVariant.withOpacity(0.8),
+                                widget.colorScheme.surfaceVariant.withOpacity(0.4),
+                              ]
+                            : [
+                                widget.colorScheme.surfaceVariant.withOpacity(0.3),
+                                widget.colorScheme.surfaceVariant.withOpacity(0.1),
+                              ],
+                      ),
                 border: Border.all(
-                  color: enabled
-                      ? widget.colorScheme.outline.withOpacity(0.3)
-                      : widget.colorScheme.outline.withOpacity(0.1),
-                  width: 1.5,
+                  color: widget.isPrimary && enabled
+                      ? widget.colorScheme.primary.withOpacity(0.5)
+                      : enabled
+                          ? widget.colorScheme.outline.withOpacity(0.2)
+                          : widget.colorScheme.outline.withOpacity(0.05),
+                  width: widget.isPrimary && enabled ? 1.5 : 1.0,
                 ),
+                boxShadow: widget.isPrimary && enabled
+                    ? [
+                        BoxShadow(
+                          color: widget.colorScheme.primary.withOpacity(0.15),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        )
+                      ]
+                    : [],
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    widget.icon,
-                    size: widget.isTablet ? 28 : 24,
-                    color: enabled
-                        ? widget.colorScheme.primary
-                        : widget.colorScheme.onSurface.withOpacity(0.3),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: enabled
+                              ? (widget.isPrimary
+                                  ? (isDark ? Colors.white : widget.colorScheme.primary).withOpacity(0.2)
+                                  : widget.colorScheme.primary.withOpacity(0.1))
+                              : Colors.transparent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          widget.icon,
+                          size: widget.isTablet ? 32 : 26,
+                          color: enabled
+                              ? (widget.isPrimary && !isDark 
+                                  ? widget.colorScheme.primary 
+                                  : (widget.isPrimary ? Colors.white : widget.colorScheme.primary))
+                              : widget.colorScheme.onSurface.withOpacity(0.3),
+                        ),
+                      ),
+                      SizedBox(height: widget.isTablet ? 12 : 10),
+                      Text(
+                        widget.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: widget.textTheme.labelMedium?.copyWith(
+                          fontWeight: widget.isPrimary ? FontWeight.w800 : FontWeight.w600,
+                          letterSpacing: 0.3,
+                          color: enabled
+                              ? (widget.isPrimary && isDark ? Colors.white : widget.colorScheme.onSurface)
+                              : widget.colorScheme.onSurface.withOpacity(0.4),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: widget.isTablet ? 10 : 8),
-                  Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: widget.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: enabled
-                          ? widget.colorScheme.onSurface
-                          : widget.colorScheme.onSurface.withOpacity(0.4),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

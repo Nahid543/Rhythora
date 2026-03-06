@@ -14,6 +14,8 @@ class GreetingSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -21,9 +23,10 @@ class GreetingSection extends StatelessWidget {
           children: [
             Text(
               greeting,
-              style: textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
+              style: textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.8,
+                color: colorScheme.onSurface,
               ),
             ),
             const SizedBox(width: 8),
@@ -34,12 +37,13 @@ class GreetingSection extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Text(
-          'Dive back into your offline library.',
+          'Dive back into your music universe',
           style: textTheme.bodyLarge?.copyWith(
-            color: colorScheme.onSurface.withOpacity(0.65),
-            height: 1.4,
+            color: colorScheme.onSurface.withOpacity(0.6),
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.2,
           ),
         ),
       ],

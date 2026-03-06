@@ -28,6 +28,7 @@ class RecentlyPlayedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final artworkId = int.tryParse(song.id) ?? 0;
     final isCurrentSong = currentSong?.id == song.id;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ValueListenableBuilder<bool>(
       valueListenable: AudioPlayerManager.instance.isPlaying,
@@ -45,27 +46,28 @@ class RecentlyPlayedCard extends StatelessWidget {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: onTap,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(24),
                   child: Ink(
                     width: isTablet ? 160 : (isSmallScreen ? 130 : 140),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: colorScheme.surfaceVariant.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(24),
+                      color: isDark ? colorScheme.surfaceContainerHighest.withOpacity(0.5) : Colors.white,
                       border: Border.all(
                         color: isCurrentSong
-                            ? colorScheme.primary.withOpacity(0.6)
-                            : colorScheme.outline.withOpacity(0.15),
+                            ? colorScheme.primary.withOpacity(0.8)
+                            : colorScheme.outline.withOpacity(isDark ? 0.1 : 0.05),
                         width: isCurrentSong ? 2 : 1,
                       ),
-                      boxShadow: isCurrentSong
-                          ? [
-                              BoxShadow(
-                                color: colorScheme.primary.withOpacity(0.2),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : null,
+                      boxShadow: [
+                        BoxShadow(
+                          color: isCurrentSong 
+                              ? colorScheme.primary.withOpacity(0.25)
+                              : Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+                          blurRadius: isCurrentSong ? 16 : 12,
+                          offset: const Offset(0, 6),
+                          spreadRadius: isCurrentSong ? 1 : 0,
+                        ),
+                      ],
                     ),
                     padding: EdgeInsets.all(isTablet ? 12 : (isSmallScreen ? 8 : 10)),
                     child: Column(
@@ -74,7 +76,7 @@ class RecentlyPlayedCard extends StatelessWidget {
                         Stack(
                           children: [
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(18),
                               child: SizedBox(
                                 height: isTablet ? 90 : (isSmallScreen ? 68 : 76),
                                 width: double.infinity,

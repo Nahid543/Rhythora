@@ -504,27 +504,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   SizedBox(height: isSmallScreen ? 16 : (isTablet ? 28 : 20)),
 
-                  _AnimatedSection(
-                    animation: _staggeredAnimations[1],
-                    child: ValueListenableBuilder<ListeningStatsSnapshot>(
-                      valueListenable: listeningStatsService.statsNotifier,
-                      builder: (context, snapshot, _) {
-                        return LibraryStatsCard(
-                          songCount: widget.allSongs.length,
-                          colorScheme: colorScheme,
-                          textTheme: textTheme,
-                          isTablet: isTablet,
-                          todayListeningTime: snapshot.listeningTime,
-                          todaySongPlays: snapshot.songPlays,
-                        );
-                      },
-                    ),
-                  ),
-                  SizedBox(height: isSmallScreen ? 16 : (isTablet ? 28 : 20)),
+
 
                   if (widget.currentSong != null) ...[
                     _AnimatedSection(
-                      animation: _staggeredAnimations[2],
+                      animation: _staggeredAnimations[1],
                       child: ContinueListeningCard(
                         song: widget.currentSong!,
                         onTap: widget.onOpenNowPlaying,
@@ -536,7 +520,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ],
 
                   _AnimatedSection(
-                    animation: _staggeredAnimations[3],
+                    animation: _staggeredAnimations[2],
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -562,7 +546,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                   if (widget.recentlyPlayed.isNotEmpty)
                     _AnimatedSection(
-                      animation: _staggeredAnimations[4],
+                      animation: _staggeredAnimations[3],
                       child: SectionHeader(
                         title: 'Recently played',
                         textTheme: textTheme,
@@ -589,12 +573,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             if (widget.recentlyPlayed.isNotEmpty)
               SliverToBoxAdapter(
                 child: FadeTransition(
-                  opacity: _staggeredAnimations[4],
+                  opacity: _staggeredAnimations[3],
                   child: SlideTransition(
                     position: Tween<Offset>(
                       begin: const Offset(0.05, 0),
                       end: Offset.zero,
-                    ).animate(_staggeredAnimations[4]),
+                    ).animate(_staggeredAnimations[3]),
                     child: SizedBox(
                       height: isTablet ? 200 : (isSmallScreen ? 150 : 170),
                       child: ListView.separated(
@@ -697,7 +681,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   _AnimatedSection(
-                    animation: _staggeredAnimations[5],
+                    animation: _staggeredAnimations[4],
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -755,6 +739,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           onSongSelected: widget.onSongSelected,
                         ),
                       ],
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 16 : (isTablet ? 24 : 20)),
+
+                  _AnimatedSection(
+                    animation: _staggeredAnimations[5],
+                    child: ValueListenableBuilder<ListeningStatsSnapshot>(
+                      valueListenable: listeningStatsService.statsNotifier,
+                      builder: (context, snapshot, _) {
+                        return LibraryStatsCard(
+                          songCount: widget.allSongs.length,
+                          colorScheme: colorScheme,
+                          textTheme: textTheme,
+                          isTablet: isTablet,
+                          todayListeningTime: snapshot.listeningTime,
+                          todaySongPlays: snapshot.songPlays,
+                        );
+                      },
                     ),
                   ),
                   SizedBox(height: isSmallScreen ? 16 : (isTablet ? 24 : 20)),
