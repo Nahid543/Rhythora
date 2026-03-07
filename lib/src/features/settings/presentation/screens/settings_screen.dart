@@ -439,18 +439,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return AlertDialog(
           backgroundColor: colorScheme.surface,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
           ),
           title: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer,
+                  color: colorScheme.primaryContainer.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  Icons.delete_sweep_rounded,
+                  Icons.cleaning_services_rounded,
                   color: colorScheme.primary,
                   size: 24,
                 ),
@@ -482,19 +482,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       try {
         await CacheService.instance.clearAllCaches();
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+        
         if (!mounted) return;
         messenger.showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
-                Icon(Icons.check_circle_rounded, size: 20),
-                SizedBox(width: 12),
-                Text('Cache cleared successfully'),
+                Icon(Icons.check_circle_rounded, size: 20, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 12),
+                const Text('Cache & Memory cleared successfully'),
               ],
             ),
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
-            margin: EdgeInsets.all(16),
+            duration: const Duration(seconds: 2),
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       } catch (e) {
@@ -535,14 +539,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return AlertDialog(
           backgroundColor: colorScheme.surface,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
           ),
           title: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: colorScheme.errorContainer,
+                  color: colorScheme.errorContainer.withOpacity(0.6),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -723,30 +727,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-            child: Row(
-              children: [
-                Icon(
-                  _batterySaverEnabled
-                      ? Icons.battery_saver
-                      : Icons.battery_full_rounded,
-                  size: 18,
-                  color: _batterySaverEnabled
-                      ? colorScheme.primary
-                      : colorScheme.onSurface.withOpacity(0.7),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _batterySaverHeaderText(),
-                  style: textTheme.labelMedium?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.7),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
           SettingsSection(
             title: 'General',
             icon: Icons.tune_rounded,
@@ -759,30 +739,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     : Icons.library_music_rounded,
                 onTap: _showDefaultScreenSelector,
               ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          SettingsSection(
-            title: 'Appearance',
-            icon: Icons.palette_rounded,
-            children: [
               SettingsTile.switchTile(
                 title: _isDarkMode ? 'Dark mode' : 'Light mode',
-                subtitle:
-                    _isDarkMode ? 'Switch to light mode' : 'Switch to dark mode',
+                subtitle: _isDarkMode ? 'Switch to light mode' : 'Switch to dark mode',
                 icon: _isDarkMode
                     ? Icons.dark_mode_rounded
                     : Icons.light_mode_rounded,
                 value: _isDarkMode,
                 onChanged: _toggleDarkMode,
               ),
+              SettingsTile.switchTile(
+                title: 'Battery Saver',
+                subtitle: _batterySaverEnabled
+                    ? 'Reduces animations and background tasks'
+                    : 'Normal performance mode ($_batteryLevel%)',
+                icon: _batterySaverEnabled
+                    ? Icons.battery_saver
+                    : Icons.battery_full_rounded,
+                value: _batterySaverEnabled,
+                onChanged: _toggleBatterySaver,
+              ),
             ],
           ),
-
-          const SizedBox(height: 8),
-
+          
           SettingsSection(
             title: 'Playback',
             icon: Icons.play_circle_rounded,
@@ -793,55 +772,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.bedtime_rounded,
                 onTap: _showSleepTimerDialog,
               ),
+              SettingsTile(
+                title: 'Audio Quality',
+                subtitle: 'High (320kbps)',
+                icon: Icons.high_quality_rounded,
+                onTap: () {}, // Handled in Now Playing typically, placeholder here
+              ),
             ],
           ),
 
-          const SizedBox(height: 8),
-
           SettingsSection(
-            title: 'Battery & Performance',
-            icon: Icons.battery_saver,
+            title: 'Data & Storage',
+            icon: Icons.storage_rounded,
             children: [
-              SettingsTile.switchTile(
-                title: 'Battery Saver',
-                subtitle: _batterySaverEnabled
-                    ? 'Reduces animations and background tasks'
-                    : 'Normal performance mode',
-                icon: _batterySaverEnabled
-                    ? Icons.battery_saver
-                    : Icons.battery_full_rounded,
-                value: _batterySaverEnabled,
-                onChanged: _toggleBatterySaver,
-              ),
-              SettingsTile.switchTile(
-                title: 'Auto-enable on low battery',
-                subtitle: _batterySaverAuto
-                    ? 'Activates below 20% battery'
-                    : 'Manual control only',
-                icon: Icons.auto_mode,
-                value: _batterySaverAuto,
-                onChanged: _toggleBatterySaverAuto,
+              SettingsTile(
+                title: 'Export data',
+                subtitle: 'Save playlists & stats as JSON/CSV',
+                icon: Icons.download_rounded,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  showDialog(
+                    context: context,
+                    builder: (context) => const ExportDialog(),
+                  );
+                },
               ),
               SettingsTile(
-                title: 'Current battery level',
-                subtitle:
-                    '$_batteryLevel% ${BatterySaverService.instance.isCharging ? '(Charging)' : ''}',
-                icon: _batteryLevel <= 20
-                    ? Icons.battery_alert_rounded
-                    : _batteryLevel <= 50
-                        ? Icons.battery_3_bar_rounded
-                        : Icons.battery_full_rounded,
-                iconColor: _batteryLevel <= 20 ? colorScheme.error : null,
+                title: 'Clear cache',
+                subtitle: _isClearingCache ? 'Clearing...' : 'Free up storage space by removing cached artwork',
+                icon: Icons.cleaning_services_rounded,
+                onTap: _isClearingCache ? null : _clearCache,
+                trailing: _isClearingCache
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : null,
               ),
             ],
           ),
 
-          const SizedBox(height: 8),
-
           SettingsSection(
-            title: 'Listening Statistics',
-            icon: Icons.insights_rounded,
+            title: 'Privacy & History',
+            icon: Icons.security_rounded,
             children: [
+              SettingsTile.switchTile(
+                title: 'Privacy mode',
+                subtitle: _privacyMode
+                    ? 'Playback is intentionally hidden from history'
+                    : 'Track listening activity for stats',
+                icon: _privacyMode ? Icons.lock_rounded : Icons.lock_open_rounded,
+                value: _privacyMode,
+                onChanged: _togglePrivacyMode,
+              ),
               SettingsTile(
                 title: 'View detailed stats',
                 subtitle: 'Weekly and monthly reports',
@@ -857,61 +841,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
               SettingsTile(
-                title: 'Export data',
-                subtitle: 'Save as CSV or JSON',
-                icon: Icons.download_rounded,
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  showDialog(
-                    context: context,
-                    builder: (context) => const ExportDialog(),
-                  );
-                },
-              ),
-              SettingsTile(
                 title: 'Clear history',
-                subtitle: 'Delete all listening data',
+                subtitle: 'Permanently delete all listening data',
                 icon: Icons.delete_sweep_rounded,
                 iconColor: colorScheme.error,
                 onTap: _clearHistory,
               ),
-              SettingsTile.switchTile(
-                title: 'Privacy mode',
-                subtitle: _privacyMode
-                    ? 'Playback not being tracked'
-                    : 'Track listening activity',
-                icon:
-                    _privacyMode ? Icons.lock_rounded : Icons.lock_open_rounded,
-                value: _privacyMode,
-                onChanged: _togglePrivacyMode,
-              ),
             ],
           ),
-
-          const SizedBox(height: 8),
-
-          SettingsSection(
-            title: 'Storage',
-            icon: Icons.storage_rounded,
-            children: [
-              SettingsTile(
-                title: 'Clear cache',
-                subtitle:
-                    _isClearingCache ? 'Clearing cache...' : 'Free up storage space',
-                icon: Icons.cleaning_services_rounded,
-                onTap: _isClearingCache ? null : _clearCache,
-                trailing: _isClearingCache
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : null,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
 
           SettingsSection(
             title: 'About',
@@ -937,7 +874,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
         ],
       ),
     );

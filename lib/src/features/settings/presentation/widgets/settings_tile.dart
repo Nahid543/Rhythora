@@ -46,17 +46,17 @@ class SettingsTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12), // Match inkwell to card if needed
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: (iconColor ?? colorScheme.primary).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: (iconColor ?? colorScheme.primary).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   icon,
@@ -74,6 +74,7 @@ class SettingsTile extends StatelessWidget {
                       title,
                       style: textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2, // Premium modern feel
                         color: colorScheme.onSurface,
                       ),
                     ),
@@ -81,8 +82,8 @@ class SettingsTile extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         subtitle!,
-                        style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurface.withOpacity(0.6),
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurface.withOpacity(0.55),
                         ),
                       ),
                     ],
@@ -96,7 +97,7 @@ class SettingsTile extends StatelessWidget {
                 Icon(
                   Icons.chevron_right_rounded,
                   color: colorScheme.onSurface.withOpacity(0.3),
-                  size: 24,
+                  size: 20,
                 ),
             ],
           ),
