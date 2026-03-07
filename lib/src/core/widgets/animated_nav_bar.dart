@@ -17,56 +17,117 @@ class AnimatedNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isTablet = MediaQuery.of(context).size.width > 600;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Instead of full width, make it a floating pill
+    final navBarWidth = isTablet ? 400.0 : MediaQuery.of(context).size.width * 0.88;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        boxShadow: animationsEnabled
-            ? [
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 24.0), // Floating above the bottom
+        // Wrap in RepaintBoundary to prevent NavBar animations from repainting the whole screen
+        child: RepaintBoundary(
+          child: Container(
+            width: navBarWidth,
+            height: 68,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(34),
+              // Use opaque colors instead of BackdropFilter for massive performance gains
+              // The illusion of depth is maintained by the shadow and border
+              color: isDark 
+                  ? const Color(0xFF1E1E2C) // Solid dark purple-gray
+                  : const Color(0xFFF8F9FA), // Solid off-white
+              border: Border.all(
+                color: isDark 
+                    ? Colors.white.withOpacity(0.08) 
+                    : Colors.black.withOpacity(0.05),
+                width: 1,
+              ),
+              boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 16,
-                  offset: const Offset(0, -2),
+                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
                 ),
-              ]
-            : null,
-      ),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          height: isTablet ? 72 : 64,
-          padding: EdgeInsets.symmetric(
-            horizontal: isTablet ? 48 : 20,
-            vertical: 8,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavBarItem(
-                icon: Icons.home_rounded,
-                label: 'Home',
-                isSelected: currentIndex == 0,
-                onTap: () => onTap(0),
-                colorScheme: colorScheme,
-                animationsEnabled: animationsEnabled,
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final itemWidth = constraints.maxWidth / 3;
+                  return Stack(
+                    children: [
+                      // Smooth gliding premium background indicator
+                      AnimatedPositioned(
+                        duration: animationsEnabled 
+                            ? const Duration(milliseconds: 300) 
+                            : Duration.zero,
+                        curve: Curves.fastOutSlowIn,
+                        left: currentIndex * itemWidth,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: itemWidth,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(26),
+                            // Slightly simplified gradient for better render performance
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFF4158D0), // Deep Indigo
+                                Color(0xFFC850C0), // Purple
+                                Color(0xFFFFCC70), // Peach/Gold
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            // Removed the inner box shadow on the indicator as it adds
+                            // minimal visual value but costs performance during the animation
+                          ),
+                        ),
+                      ),
+                      
+                      // The actual navigation items
+                      Row(
+                        children: [
+                          _NavBarItem(
+                            icon: Icons.home_rounded,
+                            activeIcon: Icons.home_rounded,
+                            label: 'Home',
+                            isSelected: currentIndex == 0,
+                            onTap: () => onTap(0),
+                            width: itemWidth,
+                            isDark: isDark,
+                            animationsEnabled: animationsEnabled,
+                          ),
+                          _NavBarItem(
+                            icon: Icons.library_music_outlined,
+                            activeIcon: Icons.library_music_rounded,
+                            label: 'Library',
+                            isSelected: currentIndex == 1,
+                            onTap: () => onTap(1),
+                            width: itemWidth,
+                            isDark: isDark,
+                            animationsEnabled: animationsEnabled,
+                          ),
+                          _NavBarItem(
+                            icon: Icons.settings_outlined,
+                            activeIcon: Icons.settings_rounded,
+                            label: 'Settings',
+                            isSelected: currentIndex == 2,
+                            onTap: () => onTap(2),
+                            width: itemWidth,
+                            isDark: isDark,
+                            animationsEnabled: animationsEnabled,
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
               ),
-              _NavBarItem(
-                icon: Icons.library_music_rounded,
-                label: 'Library',
-                isSelected: currentIndex == 1,
-                onTap: () => onTap(1),
-                colorScheme: colorScheme,
-                animationsEnabled: animationsEnabled,
-              ),
-              _NavBarItem(
-                icon: Icons.settings_rounded,
-                label: 'Settings',
-                isSelected: currentIndex == 2,
-                onTap: () => onTap(2),
-                colorScheme: colorScheme,
-                animationsEnabled: animationsEnabled,
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -74,175 +135,75 @@ class AnimatedNavBar extends StatelessWidget {
   }
 }
 
-class _NavBarItem extends StatefulWidget {
+class _NavBarItem extends StatelessWidget {
   final IconData icon;
+  final IconData activeIcon;
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
-  final ColorScheme colorScheme;
+  final double width;
+  final bool isDark;
   final bool animationsEnabled;
 
   const _NavBarItem({
     required this.icon,
+    required this.activeIcon,
     required this.label,
     required this.isSelected,
     required this.onTap,
-    required this.colorScheme,
+    required this.width,
+    required this.isDark,
     required this.animationsEnabled,
   });
 
   @override
-  State<_NavBarItem> createState() => _NavBarItemState();
-}
-
-class _NavBarItemState extends State<_NavBarItem>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration:
-          widget.animationsEnabled ? const Duration(milliseconds: 200) : Duration.zero,
-    );
-
-    _scaleAnimation = widget.animationsEnabled
-        ? Tween<double>(
-            begin: 1.0,
-            end: 1.12,
-          ).animate(
-            CurvedAnimation(
-              parent: _controller,
-              curve: Curves.easeOutCubic,
-            ),
-          )
-        : const AlwaysStoppedAnimation<double>(1.0);
-
-    if (widget.isSelected) {
-      _controller.value = 1.0;
-    }
-  }
-
-  @override
-  void didUpdateWidget(_NavBarItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isSelected != oldWidget.isSelected) {
-      if (widget.isSelected) {
-        _controller.forward();
-      } else {
-        _controller.reverse();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _handleTap() {
-    if (widget.animationsEnabled) {
-      _controller.forward().then((_) {
-        if (mounted) {
-          Future.delayed(const Duration(milliseconds: 50), () {
-            if (mounted) {}
-          });
-        }
-      });
-    }
-
-    widget.onTap();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final textColor = isSelected 
+        ? Colors.white 
+        : (isDark ? Colors.white.withOpacity(0.5) : Colors.black.withOpacity(0.4));
 
     return GestureDetector(
-      onTap: _handleTap,
+      onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: widget.animationsEnabled
-            ? const Duration(milliseconds: 200)
-            : Duration.zero,
-        curve: Curves.easeOutCubic,
-        padding: EdgeInsets.symmetric(
-          horizontal: widget.isSelected ? 18 : 12,
-          vertical: 8,
-        ),
-        decoration: BoxDecoration(
-          color: widget.isSelected
-              ? widget.colorScheme.primaryContainer.withValues(alpha: 0.6)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
+      child: SizedBox(
+        width: width,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedBuilder(
-              animation: _scaleAnimation,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _scaleAnimation.value,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (widget.isSelected)
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: widget.colorScheme.primary.withValues(alpha: 0.25),
-                                blurRadius: 16,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                        ),
-                      Icon(
-                        widget.icon,
-                        size: 24,
-                        color: widget.isSelected
-                            ? widget.colorScheme.primary
-                            : widget.colorScheme.onSurface.withValues(alpha: 0.65),
-                      ),
-                    ],
-                  ),
+            AnimatedSwitcher(
+              duration: animationsEnabled ? const Duration(milliseconds: 300) : Duration.zero,
+              transitionBuilder: (child, animation) {
+                return ScaleTransition(
+                  scale: animation,
+                  child: child,
                 );
               },
-            ),
-
-            ClipRect(
-              child: AnimatedSize(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.centerLeft,
-                child: widget.isSelected
-                    ? Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: Text(
-                          widget.label,
-                          style: textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: widget.colorScheme.primary,
-                            letterSpacing: 0.1,
-                            height: 1.0,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.clip,
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+              child: Icon(
+                isSelected ? activeIcon : icon,
+                key: ValueKey(isSelected), // Force re-render for animation
+                size: isSelected ? 26 : 24,
+                color: textColor,
               ),
             ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              child: isSelected 
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 2.0),
+                    child: Text(
+                      label,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: textColor,
+                        fontSize: 11,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
+            )
           ],
         ),
       ),

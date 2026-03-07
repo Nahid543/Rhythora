@@ -426,20 +426,29 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
       },
       child: Scaffold(
         backgroundColor: colorScheme.surface,
-        body: Column(
+        body: Stack(
           children: [
-            Expanded(child: _buildCurrentTab()),
-            SafeArea(
-              top: false,
-              child: MiniPlayerBar(onTap: _openNowPlaying),
+            Column(
+              children: [
+                Expanded(child: _buildCurrentTab()),
+                SafeArea(
+                  top: false,
+                  child: MiniPlayerBar(onTap: _openNowPlaying),
+                ),
+                // Add padding so the floating navbar does not hide content
+                const SizedBox(height: 100),
+              ],
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: AnimatedNavBar(
+                currentIndex: _currentIndex,
+                onTap: (index) => setState(() => _currentIndex = index),
+                colorScheme: colorScheme,
+                animationsEnabled: animationsEnabled,
+              ),
             ),
           ],
-        ),
-        bottomNavigationBar: AnimatedNavBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          colorScheme: colorScheme,
-          animationsEnabled: animationsEnabled,
         ),
       ),
     );
