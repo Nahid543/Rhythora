@@ -563,7 +563,7 @@ class _LibrarySearchFilterHeader extends SliverPersistentHeaderDelegate {
   });
 
   double get _baseHeight => isCompact ? 76.0 : 88.0;
-  double get _filtersHeight => hasFilters ? (isCompact ? 56.0 : 64.0) : 0.0;
+  double get _filtersHeight => hasFilters ? (isCompact ? 40.0 : 48.0) : 0.0;
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
@@ -573,7 +573,7 @@ class _LibrarySearchFilterHeader extends SliverPersistentHeaderDelegate {
 
     return Container(
       color: theme.scaffoldBackgroundColor,
-      padding: EdgeInsets.fromLTRB(16, isCompact ? 6 : 8, 16, isCompact ? 10 : 12),
+      padding: EdgeInsets.fromLTRB(16, isCompact ? 6 : 8, 16, isCompact ? 6 : 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -585,12 +585,15 @@ class _LibrarySearchFilterHeader extends SliverPersistentHeaderDelegate {
             onClear: () => searchController.clear(),
           ),
           if (hasFilters && currentSettings != null) ...[
-            SizedBox(height: isCompact ? 6 : 10),
-            LibraryFilterBar(
-              currentSettings: currentSettings!,
-              availableFolders: availableFolders,
-              onSettingsChanged: onSettingsChanged,
-              onManageFolders: onManageFolders,
+            SizedBox(height: isCompact ? 4 : 8),
+            SizedBox(
+              height: isCompact ? 32 : 36,
+              child: LibraryFilterBar(
+                currentSettings: currentSettings!,
+                availableFolders: availableFolders,
+                onSettingsChanged: onSettingsChanged,
+                onManageFolders: onManageFolders,
+              ),
             ),
           ],
         ],

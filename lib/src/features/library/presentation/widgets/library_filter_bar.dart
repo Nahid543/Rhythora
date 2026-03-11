@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/music_folder.dart';
 import '../../domain/models/library_source_settings.dart';
-import 'library_filter_chip.dart';
+import 'folder_selection_bottom_sheet.dart';
 
 class LibraryFilterBar extends StatelessWidget {
   final LibrarySourceSettings currentSettings;
@@ -17,83 +17,83 @@ class LibraryFilterBar extends StatelessWidget {
     required this.onManageFolders,
   });
 
-  void _handleAllMusicTap() {
-    if (!currentSettings.isAllMusic) {
-      onSettingsChanged(currentSettings.activateAllMusic());
-    }
-  }
-
-  void _handleFolderTap(String folderPath) {
-    onSettingsChanged(currentSettings.toggleFolder(folderPath));
-  }
-
   String _getFolderDisplayName(String path) {
     if (path.isEmpty) return 'Unknown';
-
-    final segments = path.split('/')
-      ..removeWhere((e) => e.trim().isEmpty);
-
+    final segments = path.split('/')..removeWhere((e) => e.trim().isEmpty);
     return segments.isNotEmpty ? segments.last : path;
+  }
+
+  void _openFolderSelection(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => FolderSelectionBottomSheet(
+        currentSettings: currentSettings,
+        availableFolders: availableFolders,
+        onSettingsChanged: onSettingsChanged,
+        onManageFolders: onManageFolders,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-    final visibleFolders = availableFolders.where((folder) {
-      return !currentSettings.isFolderHiddenFromFilterBar(folder.path);
-    }).toList();
+    // Determine the label for the button
+    String label = 'All Music';
+    if (!currentSettings.isAllMusic && currentSettings.folderPaths.isNotEmpty) {
+      if (currentSettings.folderPaths.length == 1) {
+        label = _getFolderDisplayName(currentSettings.folderPaths.first);
+      } else {
+        label = '${currentSettings.folderPaths.length} Folders';
+      }
+    }
 
-    return Container(
-      height: 56,
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openFolderSelection(context),
+          borderRadius: BorderRadius.circular(12),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: colorScheme.outline.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                LibraryFilterChip(
-                  label: 'All Music',
-                  icon: Icons.library_music_rounded,
-                  isActive: currentSettings.isAllMusic,
-                  onTap: _handleAllMusicTap,
+                Icon(
+                  Icons.folder_rounded,
+                  size: 16,
+                  color: colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
-
-                ...visibleFolders.map((folder) {
-                  final isActive = currentSettings.isFolderActive(folder.path);
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: LibraryFilterChip(
-                      label: '${_getFolderDisplayName(folder.path)} (${folder.songCount})',
-                      icon: Icons.folder_rounded,
-                      isActive: isActive,
-                      onTap: () => _handleFolderTap(folder.path),
-                    ),
-                  );
-                }),
+                Text(
+                  label,
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 18,
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
               ],
             ),
           ),
-          
-          Container(
-            width: 1,
-            height: 24,
-            color: colorScheme.outline.withValues(alpha: 0.2),
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-          ),
-
-          IconButton(
-            icon: Icon(Icons.settings_rounded, color: colorScheme.primary),
-            tooltip: "Manage Folders",
-            onPressed: onManageFolders,
-          ),
-          const SizedBox(width: 4),
-        ],
+        ),
       ),
     );
   }
