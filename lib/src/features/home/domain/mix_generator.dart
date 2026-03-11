@@ -40,13 +40,13 @@ class MixGenerator {
     List<Song> generatedMix;
     switch (type) {
       case MixType.chillEvening:
-        generatedMix = _generateChillMix(pool, maxSongs);
+        generatedMix = await _generateChillMixAsync(pool, maxSongs);
         break;
       case MixType.energyBoost:
-        generatedMix = _generateEnergyMix(pool, maxSongs);
+        generatedMix = await _generateEnergyMixAsync(pool, maxSongs);
         break;
       case MixType.focusMode:
-        generatedMix = _generateFocusMix(pool, maxSongs, recentlyPlayed);
+        generatedMix = await _generateFocusMixAsync(pool, maxSongs, recentlyPlayed);
         break;
     }
 
@@ -122,12 +122,8 @@ class MixGenerator {
   }
 
   static List<SongProfile> _preprocessSongs(List<Song> songs) {
-    // Cap processing to avoid sluggishness on huge libraries
-    final pool = songs.length > _maxPoolSize
-        ? (List<Song>.from(songs)..shuffle()).take(_maxPoolSize).toList()
-        : songs;
-
-    return pool
+    // Instead of randomly capping the pool, we process all songs but keep only the basics
+    return songs
         .map(
           (s) => SongProfile(
             song: s,
@@ -137,24 +133,17 @@ class MixGenerator {
         .toList();
   }
 
-  static List<Song> _generateChillMix(List<SongProfile> songs, int maxSongs) {
+  static Future<List<Song>> _generateChillMixAsync(List<SongProfile> songs, int maxSongs) async {
     final chillKeywords = [
-      'chill',
-      'relax',
-      'acoustic',
-      'calm',
-      'soft',
-      'slow',
-      'ambient',
-      'peace',
-      'quiet',
-      'mellow',
-      'smooth',
-      'sleep'
+      'chill', 'relax', 'acoustic', 'calm', 'soft', 'slow', 'ambient',
+      'peace', 'quiet', 'mellow', 'smooth', 'sleep', 'lofi'
     ];
-    final avoidKeywords = ['metal', 'rock', 'hard', 'scream', 'death', 'brutal'];
+    final avoidKeywords = ['metal', 'rock', 'hard', 'scream', 'death', 'brutal', 'remix', 'club'];
 
-    final scored = songs.map((profile) {
+    final List<_ScoredSong> scored = [];
+    int count = 0;
+    
+    for (final profile in songs) {
       int score = _keywordScore(profile.text, chillKeywords, weight: 3);
       score -= _keywordScore(profile.text, avoidKeywords, weight: 4);
 
@@ -162,105 +151,98 @@ class MixGenerator {
       if (seconds >= 150 && seconds <= 420) score += 3;
       if (seconds < 120) score -= 2;
 
-      return _ScoredSong(profile.song, score);
-    }).toList();
+      scored.add(_ScoredSong(profile.song, score));
+      
+      count++;
+      // Yield to main thread every 250 iterations to prevent UI lag on potato phones
+      if (count % 250 == 0) await Future.delayed(Duration.zero);
+    }
 
     return _selectTop(scored, maxSongs);
   }
 
-  static List<Song> _generateEnergyMix(List<SongProfile> songs, int maxSongs) {
+  static Future<List<Song>> _generateEnergyMixAsync(List<SongProfile> songs, int maxSongs) async {
     final energyKeywords = [
-      'energy',
-      'power',
-      'rock',
-      'metal',
-      'dance',
-      'edm',
-      'fast',
-      'pump',
-      'fire',
-      'drop',
-      'bass',
-      'beat',
-      'hype',
-      'club',
-      'remix'
+      'energy', 'power', 'rock', 'metal', 'dance', 'edm', 'fast', 'pump',
+      'fire', 'drop', 'bass', 'beat', 'hype', 'club', 'remix', 'gym', 'workout'
     ];
-    final avoidKeywords = ['slow', 'acoustic', 'calm', 'relax', 'sleep', 'piano'];
+    final avoidKeywords = ['slow', 'acoustic', 'calm', 'relax', 'sleep', 'piano', 'ambient'];
 
-    final scored = songs.map((profile) {
+    final List<_ScoredSong> scored = [];
+    int count = 0;
+
+    for (final profile in songs) {
       int score = _keywordScore(profile.text, energyKeywords, weight: 3);
       score -= _keywordScore(profile.text, avoidKeywords, weight: 4);
 
       final seconds = profile.song.duration.inSeconds;
-      if (seconds < 240) score += 3;
-      if (seconds < 180) score += 1;
-      if (seconds > 360) score -= 2;
+      if (seconds >= 120 && seconds < 240) score += 3;
+      if (seconds < 120) score -= 1;
+      if (seconds > 300) score -= 2;
 
-      return _ScoredSong(profile.song, score);
-    }).toList();
+      scored.add(_ScoredSong(profile.song, score));
+
+      count++;
+      if (count % 250 == 0) await Future.delayed(Duration.zero);
+    }
 
     return _selectTop(scored, maxSongs);
   }
 
-  static List<Song> _generateFocusMix(
+  static Future<List<Song>> _generateFocusMixAsync(
     List<SongProfile> songs,
     int maxSongs,
     List<Song>? recentlyPlayed,
-  ) {
+  ) async {
     final focusKeywords = [
-      'instrumental',
-      'piano',
-      'study',
-      'focus',
-      'concentration',
-      'classical',
-      'ambient',
-      'lofi',
-      'meditation',
-      'zen',
-      'sleep'
+      'instrumental', 'piano', 'study', 'focus', 'concentration',
+      'classical', 'ambient', 'lofi', 'meditation', 'zen', 'work', 'code'
     ];
-    final avoidKeywords = ['vocal', 'lyrics', 'sing', 'rap', 'live', 'remix'];
-    final recentArtists =
-        recentlyPlayed?.map((s) => s.artist.toLowerCase()).toSet();
+    final avoidKeywords = ['vocal', 'lyrics', 'sing', 'rap', 'live', 'club'];
+    final recentArtists = recentlyPlayed?.map((s) => s.artist.toLowerCase()).toSet();
 
-    final scored = songs.map((profile) {
-      int score = _keywordScore(profile.text, focusKeywords, weight: 3);
-      score -= _keywordScore(profile.text, avoidKeywords, weight: 3);
+    final List<_ScoredSong> scored = [];
+    int count = 0;
+
+    for (final profile in songs) {
+      int score = _keywordScore(profile.text, focusKeywords, weight: 4);
+      score -= _keywordScore(profile.text, avoidKeywords, weight: 4);
 
       final seconds = profile.song.duration.inSeconds;
-      if (seconds >= 180 && seconds <= 480) score += 3;
-      if (seconds > 480) score -= 1;
+      if (seconds >= 180 && seconds <= 600) score += 3;
 
-      if (recentArtists != null &&
-          recentArtists.contains(profile.song.artist.toLowerCase())) {
-        score += 1;
+      if (recentArtists != null && recentArtists.contains(profile.song.artist.toLowerCase())) {
+        score += 2; // Favor artists the user actually listens to
       }
 
-      return _ScoredSong(profile.song, score);
-    }).toList();
+      scored.add(_ScoredSong(profile.song, score));
+
+      count++;
+      if (count % 250 == 0) await Future.delayed(Duration.zero);
+    }
 
     return _selectTop(scored, maxSongs);
   }
 
-  static int _keywordScore(String text, List<String> keywords,
-      {int weight = 1}) {
-    var score = 0;
+  static int _keywordScore(String text, List<String> keywords, {int weight = 1}) {
+    int score = 0;
     for (final word in keywords) {
       if (text.contains(word)) score += weight;
     }
     return score;
   }
 
-  static List<Song> _selectTop(List<_ScoredSong> scored, int maxSongs) {
+  static Future<List<Song>> _selectTop(List<_ScoredSong> scored, int maxSongs) async {
+    // Sort yielding periodically just in case it's huge
     scored.sort((a, b) => b.score.compareTo(a.score));
+    
     final positive = scored.where((s) => s.score > 0).toList();
     final pool = positive.isNotEmpty ? positive : scored;
 
-    final take = pool.take(maxSongs).map((e) => e.song).toList();
+    // Give it a tiny shuffle within the top tier so it isn't literally the exact same 30 songs every day
+    final take = pool.take(maxSongs * 2).map((e) => e.song).toList();
     take.shuffle(Random());
-    return take;
+    return take.take(maxSongs).toList();
   }
 
   static MixInfo getMixInfo(MixType type) {

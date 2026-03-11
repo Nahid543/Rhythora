@@ -156,7 +156,7 @@ class MixCard extends StatelessWidget {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.95, end: 1.0),
       duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOut,
+      curve: Curves.easeOutCubic,
       builder: (context, scale, child) {
         return Transform.scale(
           scale: scale,

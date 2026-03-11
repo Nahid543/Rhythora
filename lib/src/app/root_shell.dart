@@ -431,14 +431,26 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
             Column(
               children: [
                 Expanded(child: _buildCurrentTab()),
-                SafeArea(
-                  top: false,
-                  child: MiniPlayerBar(onTap: _openNowPlaying),
+                // Dynamic padding: add extra space only if the mini player is visible
+                ValueListenableBuilder<Song?>(
+                  valueListenable: AudioPlayerManager.instance.currentSong,
+                  builder: (context, currentSong, _) {
+                    return SizedBox(height: currentSong != null ? 180 : 100);
+                  },
                 ),
-                // Add padding so the floating navbar does not hide content
-                const SizedBox(height: 100),
               ],
             ),
+            
+            // True Floating Mini Player
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 100.0), // Floats above Nav Bar
+                child: MiniPlayerBar(onTap: _openNowPlaying),
+              ),
+            ),
+            
+            // Floating Navigation Bar
             Align(
               alignment: Alignment.bottomCenter,
               child: AnimatedNavBar(
