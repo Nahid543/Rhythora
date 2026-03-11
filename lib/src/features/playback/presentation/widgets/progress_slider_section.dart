@@ -314,8 +314,8 @@ class _WaveformPainter extends CustomPainter {
       
       final paint = Paint()
         ..color = isActive 
-            ? Colors.white.withOpacity(0.9) 
-            : Colors.white.withOpacity(0.2)
+            ? activeColor 
+            : inactiveColor
         ..style = PaintingStyle.fill;
         
       // Fully rounded circular caps for ultra-smooth pill aesthetic

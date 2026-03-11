@@ -10,9 +10,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../library/domain/entities/song.dart';
+import '../../library/data/local_music_loader.dart';
 import '../domain/repeat_mode.dart';
 import '../../../app/rhythora_app.dart' show listeningStatsService;
 import '../../../core/services/battery_saver_service.dart';
+import 'dynamic_color_service.dart';
 
 class AudioPlayerManager {
   AudioPlayerManager._internal() {
@@ -144,7 +146,8 @@ class AudioPlayerManager {
             debugPrint('[Stats] Song completed, stopped tracking');
           }
 
-          if (repeatMode.value == RepeatMode.off) {
+          // If there is a next song, DO NOT pause, just let ConcatenatingAudioSource autoAdvance seamlessly!
+          if (repeatMode.value == RepeatMode.off && !_player.hasNext) {
             debugPrint('[AudioPlayer] Queue completed (no repeat) - pausing on last song');
             
             // ✅ FIX 1: Just pause - DON'T clear currentSong/queue for miniplayer
@@ -239,6 +242,9 @@ class AudioPlayerManager {
       currentSong.value = newSong;
       currentIndex.value = index;
 
+      // ✅ Trigger Dynamic Color Extraction
+      DynamicColorService.instance.updateDominantColor(newSong.albumArtPath);
+
       if (isPlaying.value && !_isRestoringState) {
         _currentTrackingSongId = newSong.id;
         await listeningStatsService.startListening(newSong.id);
@@ -278,7 +284,7 @@ class AudioPlayerManager {
     }
   }
 
-  Uri? _resolveArtworkUri(Song song) {
+  Uri? _resolveArtworkUri(Song song, String? preResolvedPath) {
     if (!BatterySaverService.instance.shouldLoadAlbumArt) {
       if (_defaultArtworkPath != null &&
           _defaultArtworkPath!.isNotEmpty) {
@@ -287,7 +293,7 @@ class AudioPlayerManager {
       return null;
     }
 
-    final artPath = song.albumArtPath;
+    final artPath = preResolvedPath ?? song.albumArtPath;
     if (artPath != null && artPath.isNotEmpty) {
       final parsed = Uri.tryParse(artPath);
       if (parsed != null) {
@@ -339,18 +345,34 @@ class AudioPlayerManager {
       currentIndex.value = startIndex;
       currentSong.value = songsToPlay[startIndex];
 
+      // ✅ FIX: Pre-fetch high-res artwork for the first song to guarantee the Notification Panel has an image
+      String? initialArtworkPath;
+      if (BatterySaverService.instance.shouldLoadAlbumArt) {
+        final startSongId = int.tryParse(songsToPlay[startIndex].id);
+        if (startSongId != null) {
+          initialArtworkPath = await LocalMusicLoader.instance.getOrCacheArtwork(startSongId);
+        }
+      }
+
+      final sources = <AudioSource>[];
+      for (int i = 0; i < songsToPlay.length; i++) {
+        final s = songsToPlay[i];
+        final artPath = (i == startIndex) ? initialArtworkPath : null;
+        sources.add(_createAudioSource(s, artPath));
+      }
+
+      // Enable Gapless Playback by eagerly preparing adjacent items
       _currentPlaylist = ConcatenatingAudioSource(
-        useLazyPreparation: true,
+        useLazyPreparation: false, // Pre-buffer next audio stream immediately
         shuffleOrder: DefaultShuffleOrder(),
-        children:
-            songsToPlay.map((s) => _createAudioSource(s)).toList(),
+        children: sources,
       );
 
       await _player.setAudioSource(
         _currentPlaylist!,
         initialIndex: startIndex,
         initialPosition: Duration.zero,
-        preload: BatterySaverService.instance.shouldLoadAlbumArt,
+        preload: true, // Force preload for Gapless playback
       );
 
       debugPrint(
@@ -362,14 +384,45 @@ class AudioPlayerManager {
       }
 
       _isRestoringState = false;
+
+      // Unawaited background task to cache remaining artworks for smooth transitions
+      if (BatterySaverService.instance.shouldLoadAlbumArt) {
+        _preloadQueueArtworks(songsToPlay, startIndex);
+      }
+
     } catch (e) {
       debugPrint('❌ Error setting audio source: $e');
       _isRestoringState = false;
     }
   }
 
-  AudioSource _createAudioSource(Song song) {
-    final mediaItem = _createMediaItem(song);
+  Future<void> _preloadQueueArtworks(List<Song> queue, int startIndex) async {
+    // Only preload the next 10 songs to avoid draining memory/battery
+    final limit = (startIndex + 10).clamp(0, queue.length);
+    for (int i = startIndex + 1; i < limit; i++) {
+      if (_currentPlaylist == null || _currentQueue != queue) break; // Queue changed
+      
+      final songId = int.tryParse(queue[i].id);
+      if (songId != null) {
+        final artPath = await LocalMusicLoader.instance.getOrCacheArtwork(songId);
+        if (artPath != null && _currentPlaylist != null && _currentQueue == queue) {
+          // Check if it's currently playing, if so, skip swapping to avoid stuttering
+          if (_player.currentIndex == i) continue;
+          
+          final newSource = _createAudioSource(queue[i], artPath);
+          try {
+            await _currentPlaylist!.removeAt(i);
+            await _currentPlaylist!.insert(i, newSource);
+          } catch (_) {
+            // Ignore bounds errors if playlist mutated concurrently
+          }
+        }
+      }
+    }
+  }
+
+  AudioSource _createAudioSource(Song song, String? preResolvedPath) {
+    final mediaItem = _createMediaItem(song, preResolvedPath);
 
     if (song.isLocalFile &&
         song.filePath != null &&
@@ -386,8 +439,8 @@ class AudioPlayerManager {
     }
   }
 
-  MediaItem _createMediaItem(Song song) {
-    final artworkUri = _resolveArtworkUri(song);
+  MediaItem _createMediaItem(Song song, String? preResolvedPath) {
+    final artworkUri = _resolveArtworkUri(song, preResolvedPath);
     return MediaItem(
       id: song.id,
       title: song.title,

@@ -181,8 +181,9 @@ class _CircleControlButtonState extends State<_CircleControlButton>
     }
   }
 
-  @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final button = AnimatedBuilder(
       animation: _scaleAnimation,
       builder: (context, child) {
@@ -196,12 +197,12 @@ class _CircleControlButtonState extends State<_CircleControlButton>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: widget.isSolid
-                    ? Colors.black
-                    : Colors.white.withOpacity(0.1),
+                    ? (isDark ? Colors.black : widget.colorScheme.primary)
+                    : (isDark ? Colors.white.withOpacity(0.1) : widget.colorScheme.primary.withOpacity(0.1)),
                 boxShadow: widget.isSolid
                     ? [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
+                          color: (isDark ? Colors.black : widget.colorScheme.primary).withOpacity(0.3),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -212,8 +213,10 @@ class _CircleControlButtonState extends State<_CircleControlButton>
                 widget.icon,
                 size: widget.iconSize,
                 color: widget.onPressed != null
-                    ? Colors.white
-                    : Colors.white.withOpacity(0.3),
+                    ? (widget.isSolid 
+                        ? (isDark ? Colors.white : widget.colorScheme.onPrimary)
+                        : (isDark ? Colors.white : widget.colorScheme.primary))
+                    : (isDark ? Colors.white.withOpacity(0.3) : widget.colorScheme.onSurface.withOpacity(0.3)),
               ),
             ),
           ),

@@ -31,6 +31,7 @@ dependencies:
   url_launcher: ^6.3.0
   cupertino_icons: ^1.0.8
   battery_plus: ^5.0.2
+  palette_generator: ^0.3.3+7
 
 dev_dependencies:
   flutter_test:
