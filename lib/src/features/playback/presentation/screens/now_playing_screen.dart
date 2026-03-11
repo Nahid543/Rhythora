@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui';
+import 'package:audio_session/audio_session.dart';
 
 import '../../../library/domain/entities/song.dart';
 import '../../../library/data/playlist_repository.dart';
@@ -12,6 +13,7 @@ import '../widgets/album_artwork_section.dart';
 import '../widgets/playback_controls.dart';
 import '../widgets/progress_slider_section.dart';
 import '../widgets/now_playing_actions_sheet.dart';
+import '../../data/dynamic_color_service.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   final VoidCallback? onQueueTap;
@@ -38,8 +40,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
   double _horizontalDragOffset = 0.0;
   bool _isDragging = false;
 
-  ColorScheme? _dynamicColorScheme;
-
   @override
   void initState() {
     super.initState();
@@ -63,36 +63,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     _fadeController.forward();
 
     _checkFirstTimeGesture();
-
-    _player.currentSong.addListener(_updateDynamicColor);
-    _updateDynamicColor();
-  }
-
-  Future<void> _updateDynamicColor() async {
-    final song = _player.currentSong.value;
-    if (song != null && song.albumArtPath != null && song.albumArtPath!.isNotEmpty) {
-      try {
-        final provider = FileImage(File(song.albumArtPath!));
-        final newScheme = await ColorScheme.fromImageProvider(
-          provider: provider,
-          brightness: Theme.of(context).brightness,
-        );
-        if (mounted) {
-          setState(() {
-            _dynamicColorScheme = newScheme;
-          });
-        }
-      } catch (e) {
-        if (mounted) setState(() => _dynamicColorScheme = null);
-      }
-    } else {
-      if (mounted) setState(() => _dynamicColorScheme = null);
-    }
   }
 
   @override
   void dispose() {
-    _player.currentSong.removeListener(_updateDynamicColor);
     _slideController.dispose();
     _fadeController.dispose();
     _pageController.dispose();
@@ -313,6 +287,103 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     );
   }
 
+  void _showSleepTimerSheet(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: cs.onSurface.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Icon(Icons.timer_rounded, color: cs.primary, size: 28),
+                const SizedBox(width: 12),
+                Text(
+                  'Sleep Timer', 
+                  style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...[15, 30, 45, 60].map((mins) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    Icons.access_time_rounded,
+                    color: cs.onSurface.withOpacity(0.8),
+                  ),
+                  title: Text(
+                    '$mins minutes',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    _player.setSleepTimer(Duration(minutes: mins));
+                    Navigator.pop(ctx);
+                  },
+                )),
+            ValueListenableBuilder<Duration?>(
+              valueListenable: _player.sleepTimerRemaining,
+              builder: (context, remaining, _) {
+                if (remaining == null) return const SizedBox.shrink();
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.timer_off_rounded, color: cs.error),
+                  title: Text(
+                    'Turn off timer', 
+                    style: TextStyle(
+                      color: cs.error,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    _player.cancelSleepTimer();
+                    Navigator.pop(ctx);
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    if (minutes > 0) {
+      return '$minutes:${seconds.toString().padLeft(2, '0')}';
+    } else {
+      return '$seconds s';
+    }
+  }
+
   // ─── Build ──────────────────────────────────────────────────────────
 
   @override
@@ -395,43 +466,74 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     TextTheme textTheme,
     bool isTablet,
   ) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
+    return ListenableBuilder(
+      listenable: DynamicColorService.instance,
+      builder: (context, _) {
         final double hPad = isTablet ? 48 : 24;
         
-        // Use dynamic color or fallback to theme
-        final primaryColor = _dynamicColorScheme?.primary ?? colorScheme.primary;
+        // Use dynamically cached color
+        final primaryColor = DynamicColorService.instance.dominantColor;
         final isDark = Theme.of(context).brightness == Brightness.dark;
 
-        return Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: isDark 
-                ? [
-                    // Top: Strongly tinted by the artwork, but still fairly dark
-                    Color.lerp(Colors.black, primaryColor, 0.45)!,
-                    // Middle: Fading quickly to pitch black
-                    Color.lerp(Colors.black, primaryColor, 0.15)!,
-                    // Bottom: Deep black background
-                    colorScheme.surface, 
-                  ]
-                : [
-                    // Top: Brightly tinted by the artwork
-                    Color.lerp(Colors.white, primaryColor, 0.25)!,
-                    // Middle: Fading to pure white/surface
-                    Color.lerp(Colors.white, primaryColor, 0.05)!,
-                    // Bottom: Clean surface
-                    colorScheme.surface, 
-                  ],
-              stops: const [0.0, 0.45, 0.9],
-            ),
-          ),
-          child: SafeArea(
-            child: Column(
+        return Stack(
+          children: [
+            // ── 1. Highly Optimized Dynamic Blurred Background ──
+            if (song.albumArtPath != null && song.albumArtPath!.isNotEmpty && File(song.albumArtPath!).existsSync())
+              Positioned.fill(
+                // RepaintBoundary ensures the heavy blur is cached and not redrawn on every frame/animation
+                child: RepaintBoundary(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Loading a tiny res version of the image saves massive memory and makes blurring cheaper
+                      Image.file(
+                        File(song.albumArtPath!),
+                        fit: BoxFit.cover,
+                        cacheWidth: 100, // Downscale internally to just 100px wide
+                      ),
+                      // The heavy blur filter
+                      BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 50.0, sigmaY: 50.0),
+                        child: Container(
+                          // Dynamic tint to make texts/icons perfectly legible but still colorful
+                          color: isDark 
+                              ? Colors.black.withOpacity(0.75) // Darker for OLED
+                              : primaryColor.withOpacity(0.15), // Light, colorful tint in light mode
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              // Fallback Gradient if no art
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: isDark 
+                        ? [
+                            Color.lerp(Colors.black, primaryColor, 0.45)!,
+                            Color.lerp(Colors.black, primaryColor, 0.15)!,
+                            colorScheme.surface, 
+                          ]
+                        : [
+                            Color.lerp(Colors.white, primaryColor, 0.25)!,
+                            Color.lerp(Colors.white, primaryColor, 0.05)!,
+                            colorScheme.surface, 
+                          ],
+                      stops: const [0.0, 0.45, 0.9],
+                    ),
+                  ),
+                ),
+              ),
+
+            // ── 2. The Main Interactive UI ──
+            Positioned.fill(
+              child: SafeArea(
+                child: Column(
               key: ValueKey(song.id),
               children: [
                 // Top bar — only down arrow to match demo
@@ -483,7 +585,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                               decoration: BoxDecoration(
                                 color: isDark 
                                     ? Colors.white.withOpacity(0.08)
-                                    : colorScheme.primary.withOpacity(0.08),
+                                    : primaryColor.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Text(
@@ -503,7 +605,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                               decoration: BoxDecoration(
                                 color: isDark
                                     ? Colors.black.withOpacity(0.2)
-                                    : colorScheme.surfaceTint.withOpacity(0.05),
+                                    : primaryColor.withOpacity(0.05),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -517,6 +619,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            const SizedBox(height: 16),
+                            _DeviceOutputIndicator(colorScheme: colorScheme, isDark: isDark),
                           ],
                         ),
                         
@@ -531,19 +635,20 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                               colorScheme: colorScheme,
                             ),
                             const SizedBox(width: 12),
-                            _ActionChip(
-                              icon: Icons.timer_outlined,
-                              tooltip: 'Sleep Timer',
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Text('Sleep Timer coming soon!'),
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
+                            ValueListenableBuilder<Duration?>(
+                              valueListenable: _player.sleepTimerRemaining,
+                              builder: (context, remaining, _) {
+                                final isActive = remaining != null;
+                                return _ActionChip(
+                                  icon: isActive ? Icons.timer_rounded : Icons.timer_outlined,
+                                  isActive: isActive,
+                                  tooltip: isActive 
+                                      ? 'Sleep Timer: ${_formatDuration(remaining)}'
+                                      : 'Sleep Timer',
+                                  onPressed: () => _showSleepTimerSheet(context),
+                                  colorScheme: colorScheme,
                                 );
                               },
-                              colorScheme: colorScheme,
                             ),
                             
                             const SizedBox(width: 48), // Massive center gap matching demo
@@ -629,8 +734,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
               ],
             ),
           ),
-        );
-      },
+        ),
+      ],
+    );
+  },
     );
   }
 
@@ -711,6 +818,122 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
               ),
             ),
             const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DeviceOutputIndicator extends StatefulWidget {
+  final ColorScheme colorScheme;
+  final bool isDark;
+
+  const _DeviceOutputIndicator({required this.colorScheme, required this.isDark});
+
+  @override
+  State<_DeviceOutputIndicator> createState() => _DeviceOutputIndicatorState();
+}
+
+class _DeviceOutputIndicatorState extends State<_DeviceOutputIndicator> {
+  String _deviceName = "Phone Speaker";
+  IconData _deviceIcon = Icons.speaker_rounded;
+  
+  @override
+  void initState() {
+    super.initState();
+    _initAudioSession();
+  }
+
+  Future<void> _initAudioSession() async {
+    final session = await AudioSession.instance;
+    _updateDevices(await session.getDevices());
+    session.devicesStream.listen((devices) {
+      if (mounted) _updateDevices(devices);
+    });
+  }
+
+  void _updateDevices(Set<AudioDevice> devices) {
+    // Filter to just outputs
+    final outputs = devices.where((d) => d.isOutput).toList();
+    if (outputs.isEmpty) return;
+
+    // Check for Bluetooth first (highest priority usually)
+    final btDevice = outputs.where((d) => 
+      d.type == AudioDeviceType.bluetoothA2dp || 
+      d.type == AudioDeviceType.bluetoothSco || 
+      d.type == AudioDeviceType.bluetoothLe
+    ).firstOrNull;
+
+    if (btDevice != null) {
+      setState(() {
+        _deviceName = btDevice.name.isNotEmpty && btDevice.name != 'Unknown' 
+            ? btDevice.name 
+            : 'Bluetooth';
+        _deviceIcon = Icons.bluetooth_audio_rounded;
+      });
+      return;
+    }
+
+    // Check for Wired Headphones / Headsets next
+    final wiredDevice = outputs.where((d) => 
+      d.type == AudioDeviceType.wiredHeadphones || 
+      d.type == AudioDeviceType.wiredHeadset || 
+      d.type == AudioDeviceType.usbAudio
+    ).firstOrNull;
+
+    if (wiredDevice != null) {
+      setState(() {
+        _deviceName = 'Headphones';
+        _deviceIcon = Icons.headphones_rounded;
+      });
+      return;
+    }
+
+    // Fallback to internal speaker
+    setState(() {
+      _deviceName = 'Phone Speaker';
+      _deviceIcon = Icons.speaker_rounded;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: Container(
+        key: ValueKey(_deviceName),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: widget.isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: widget.isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _deviceIcon, 
+              size: 14,
+              color: widget.colorScheme.primary,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                _deviceName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: widget.colorScheme.primary,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -802,6 +1025,8 @@ class _ArtworkActionsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -813,7 +1038,7 @@ class _ArtworkActionsRow extends StatelessWidget {
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.12),
+                color: isDark ? Colors.white.withOpacity(0.12) : colorScheme.primary.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Row(
@@ -822,16 +1047,16 @@ class _ArtworkActionsRow extends StatelessWidget {
                   _SmallIconButton(
                     icon: isFav ? Icons.thumb_up_alt : Icons.thumb_up_off_alt,
                     isActive: isFav,
-                    activeColor: Colors.white,
-                    inactiveColor: Colors.white70,
+                    activeColor: isDark ? Colors.white : colorScheme.primary,
+                    inactiveColor: isDark ? Colors.white70 : colorScheme.onSurface.withOpacity(0.6),
                     onPressed: () => onFavoriteToggle(song, isFav),
                   ),
                   const SizedBox(width: 16),
                   _SmallIconButton(
                     icon: Icons.thumb_down_off_alt,
                     isActive: false,
-                    activeColor: Colors.white,
-                    inactiveColor: Colors.white70,
+                    activeColor: isDark ? Colors.white : colorScheme.primary,
+                    inactiveColor: isDark ? Colors.white70 : colorScheme.onSurface.withOpacity(0.6),
                     onPressed: () {
                       HapticFeedback.lightImpact();
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -856,14 +1081,14 @@ class _ArtworkActionsRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.12),
+            color: isDark ? Colors.white.withOpacity(0.12) : colorScheme.primary.withOpacity(0.08),
             shape: BoxShape.circle,
           ),
           child: _SmallIconButton(
             icon: Icons.more_vert_rounded,
             isActive: false,
-            activeColor: Colors.white,
-            inactiveColor: Colors.white70,
+            activeColor: isDark ? Colors.white : colorScheme.primary,
+            inactiveColor: isDark ? Colors.white70 : colorScheme.onSurface.withOpacity(0.6),
             onPressed: onMenuTap,
           ),
         ),
@@ -952,6 +1177,7 @@ class _ActionChipState extends State<_ActionChip>
   Widget build(BuildContext context) {
     const size = 44.0;
     const iconSize = 22.0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final child = AnimatedBuilder(
       animation: _scale,
@@ -972,11 +1198,11 @@ class _ActionChipState extends State<_ActionChip>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: widget.isActive
-                    ? Colors.white.withOpacity(0.3)
-                    : Colors.white.withOpacity(0.12),
+                    ? (isDark ? Colors.white.withOpacity(0.3) : widget.colorScheme.primary.withOpacity(0.15))
+                    : (isDark ? Colors.white.withOpacity(0.12) : widget.colorScheme.onSurface.withOpacity(0.08)),
                 border: widget.isActive
                     ? Border.all(
-                        color: Colors.white,
+                        color: isDark ? Colors.white : widget.colorScheme.primary,
                         width: 1.5,
                       )
                     : Border.all(color: Colors.transparent, width: 0),
@@ -984,7 +1210,9 @@ class _ActionChipState extends State<_ActionChip>
               child: Icon(
                 widget.icon,
                 size: iconSize,
-                color: Colors.white,
+                color: isDark 
+                    ? Colors.white 
+                    : (widget.isActive ? widget.colorScheme.primary : widget.colorScheme.onSurface),
               ),
             ),
           ),

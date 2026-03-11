@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'dart:ui';
 
 import '../../../library/domain/entities/song.dart';
 import '../../data/audio_player_manager.dart';
+import '../../data/dynamic_color_service.dart';
 
 class MiniPlayerBar extends StatefulWidget {
   final VoidCallback onTap;
@@ -104,6 +106,7 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
+    final isDark = theme.brightness == Brightness.dark;
     final artworkId = int.tryParse(song.id) ?? 0;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
@@ -112,95 +115,74 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
       position: _slideAnimation,
       child: FadeTransition(
         opacity: _fadeAnimation,
-        child: Container(
-          margin: EdgeInsets.fromLTRB(
-            isTablet ? 20 : 12,
-            8,
-            isTablet ? 20 : 12,
-            isTablet ? 20 : 12,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 25,
-                spreadRadius: 0,
-                offset: const Offset(0, 8),
-              ),
-              BoxShadow(
-                color: colorScheme.primary.withOpacity(0.15),
-                blurRadius: 20,
-                spreadRadius: -5,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      colorScheme.surfaceVariant.withOpacity(0.95),
-                      colorScheme.surface.withOpacity(0.98),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: colorScheme.outline.withOpacity(0.15),
-                    width: 1.5,
-                  ),
+        child: ListenableBuilder(
+          listenable: DynamicColorService.instance,
+          builder: (context, child) {
+            final dominantColor = DynamicColorService.instance.dominantColor;
+            
+            return Container(
+              margin: EdgeInsets.symmetric(horizontal: isTablet ? 40 : 16),
+              // True Floating Pill Decoration
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(40), // Perfectly rounded pill
+                // Optimized rendering with opaque colors instead of BackdropFilter
+                color: isDark ? const Color(0xFF1E1E2C) : const Color(0xFFF8F9FA),
+                border: Border.all(
+                  color: dominantColor.withValues(alpha: isDark ? 0.3 : 0.2), // Dynamic border
+                  width: 1,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildProgressBar(colorScheme),
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                    blurRadius: 24,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 8),
+                  ),
+                  // Dynamic subtle glow beneath
+                  BoxShadow(
+                    color: dominantColor.withValues(alpha: isDark ? 0.25 : 0.15),
+                    blurRadius: 24,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(40),
+                child: Material(
+                  color: Colors.transparent,
+                  child: Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      InkWell(
                         onTap: widget.onTap,
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(20),
-                          bottomRight: Radius.circular(20),
-                        ),
                         child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isTablet ? 20 : 16,
-                            vertical: isTablet ? 16 : 14,
+                          padding: const EdgeInsets.only(
+                            left: 8, 
+                            top: 8, 
+                            bottom: 8, 
+                            right: 16
                           ),
                           child: Row(
                             children: [
-                              _buildArtwork(
-                                song,
-                                artworkId,
-                                colorScheme,
-                                isTablet,
-                              ),
+                              _buildArtwork(song, artworkId, colorScheme, isTablet),
                               SizedBox(width: isTablet ? 16 : 14),
                               Expanded(
-                                child: _buildSongInfo(
-                                  song,
-                                  colorScheme,
-                                  textTheme,
-                                ),
+                                child: _buildSongInfo(song, colorScheme, textTheme),
                               ),
-                              SizedBox(width: isTablet ? 16 : 12),
-                              _buildControls(colorScheme, isTablet),
+                              SizedBox(width: isTablet ? 16 : 8),
+                              _buildControls(colorScheme, isTablet, isDark),
                             ],
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      // Progress bar integrated into the bottom lip of the pill
+                      _buildProgressBar(colorScheme),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -220,13 +202,12 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
             return TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: progress.clamp(0.0, 1.0)),
               duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOut,
+              curve: Curves.easeOutCubic,
               builder: (context, value, _) {
+                final dominantColor = DynamicColorService.instance.dominantColor;
                 return Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceVariant.withOpacity(0.5),
-                  ),
+                  height: 3, // Thinner, minimalist stroke
+                  width: double.infinity,
                   alignment: Alignment.centerLeft,
                   child: FractionallySizedBox(
                     widthFactor: value,
@@ -234,16 +215,16 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            colorScheme.primary,
-                            colorScheme.secondary,
+                            dominantColor,
+                            dominantColor.withValues(alpha: 0.7),
                             colorScheme.tertiary,
                           ],
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: colorScheme.primary.withOpacity(0.4),
-                            blurRadius: 8,
-                            spreadRadius: 1,
+                            color: dominantColor.withValues(alpha: 0.5),
+                            blurRadius: 6,
+                            spreadRadius: 0,
                           ),
                         ],
                       ),
@@ -264,7 +245,7 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
     ColorScheme colorScheme,
     bool isTablet,
   ) {
-    final size = isTablet ? 60.0 : 52.0;
+    final size = isTablet ? 56.0 : 48.0;
 
     return Hero(
       tag: 'artwork_${song.id}',
@@ -272,18 +253,16 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
         width: size,
         height: size,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          shape: BoxShape.circle, // Circular artwork fits pill perfectly
           boxShadow: [
             BoxShadow(
-              color: colorScheme.primary.withOpacity(0.3),
-              blurRadius: 12,
-              spreadRadius: 1,
-              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
+        child: ClipOval(
           child: QueryArtworkWidget(
             id: artworkId,
             type: ArtworkType.AUDIO,
@@ -291,21 +270,11 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
             artworkBorder: BorderRadius.zero,
             quality: 100,
             nullArtworkWidget: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    colorScheme.primary.withOpacity(0.8),
-                    colorScheme.secondary.withOpacity(0.6),
-                    colorScheme.tertiary.withOpacity(0.4),
-                  ],
-                ),
-              ),
+              color: colorScheme.surfaceVariant,
               child: Icon(
                 Icons.music_note_rounded,
-                color: Colors.white,
-                size: isTablet ? 28 : 24,
+                color: colorScheme.onSurfaceVariant,
+                size: 24,
               ),
             ),
           ),
@@ -328,118 +297,98 @@ class _MiniPlayerBarState extends State<MiniPlayerBar>
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
             letterSpacing: 0.2,
             height: 1.2,
           ),
         ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.person_rounded,
-                    size: 12,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    song.artist,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+        const SizedBox(height: 2),
+        Text(
+          song.artist,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurface.withOpacity(0.6),
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildControls(ColorScheme colorScheme, bool isTablet) {
+  Widget _buildControls(ColorScheme colorScheme, bool isTablet, bool isDark) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _CircleButton(
+        _FlatIconButton(
           icon: Icons.skip_previous_rounded,
           size: isTablet ? 42 : 38,
-          iconSize: isTablet ? 24 : 22,
-          onPressed: () => _player.skipToPrevious(),
-          colorScheme: colorScheme,
-          isPrimary: false,
+          iconSize: isTablet ? 26 : 24,
+          onPressed: () {
+            HapticFeedback.mediumImpact();
+            _player.skipToPrevious();
+          },
+          color: colorScheme.onSurface.withOpacity(0.6),
         ),
-        SizedBox(width: isTablet ? 10 : 8),
+        SizedBox(width: isTablet ? 8 : 4),
         ValueListenableBuilder<bool>(
           valueListenable: _player.isPlaying,
           builder: (context, isPlaying, _) {
-            return _CircleButton(
-              icon: isPlaying
-                  ? Icons.pause_rounded
-                  : Icons.play_arrow_rounded,
-              size: isTablet ? 52 : 48,
-              iconSize: isTablet ? 28 : 26,
+            return _FlatIconButton(
+              icon: isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              size: isTablet ? 48 : 44,
+              iconSize: isTablet ? 30 : 28,
               onPressed: () {
+                HapticFeedback.lightImpact();
                 if (isPlaying) {
                   _player.pause();
                 } else {
                   _player.play();
                 }
               },
-              colorScheme: colorScheme,
-              isPrimary: true,
+              color: isPlaying 
+                  ? colorScheme.primary 
+                  : colorScheme.onSurface.withOpacity(0.8),
             );
           },
         ),
-        SizedBox(width: isTablet ? 10 : 8),
-        _CircleButton(
+        SizedBox(width: isTablet ? 8 : 4),
+        _FlatIconButton(
           icon: Icons.skip_next_rounded,
           size: isTablet ? 42 : 38,
-          iconSize: isTablet ? 24 : 22,
-          onPressed: () => _player.skipToNext(),
-          colorScheme: colorScheme,
-          isPrimary: false,
+          iconSize: isTablet ? 26 : 24,
+          onPressed: () {
+            HapticFeedback.mediumImpact();
+            _player.skipToNext();
+          },
+          color: colorScheme.onSurface.withOpacity(0.6),
         ),
       ],
     );
   }
 }
 
-class _CircleButton extends StatefulWidget {
+class _FlatIconButton extends StatefulWidget {
   final IconData icon;
   final double size;
   final double iconSize;
   final VoidCallback onPressed;
-  final ColorScheme colorScheme;
-  final bool isPrimary;
+  final Color color;
 
-  const _CircleButton({
+  const _FlatIconButton({
     required this.icon,
     required this.size,
     required this.iconSize,
     required this.onPressed,
-    required this.colorScheme,
-    required this.isPrimary,
+    required this.color,
   });
 
   @override
-  State<_CircleButton> createState() => _CircleButtonState();
+  State<_FlatIconButton> createState() => _FlatIconButtonState();
 }
 
-class _CircleButtonState extends State<_CircleButton>
+class _FlatIconButtonState extends State<_FlatIconButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
@@ -449,10 +398,10 @@ class _CircleButtonState extends State<_CircleButton>
     super.initState();
     _scaleController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 150),
+      duration: const Duration(milliseconds: 100),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.88).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.85).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeOutCubic),
     );
   }
 
@@ -464,7 +413,7 @@ class _CircleButtonState extends State<_CircleButton>
 
   void _handleTap() {
     _scaleController.forward().then((_) {
-      _scaleController.reverse();
+      if (mounted) _scaleController.reverse();
     });
     widget.onPressed();
   }
@@ -473,53 +422,21 @@ class _CircleButtonState extends State<_CircleButton>
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: _handleTap,
+      behavior: HitTestBehavior.opaque,
       child: AnimatedBuilder(
         animation: _scaleAnimation,
         builder: (context, child) {
           return Transform.scale(
             scale: _scaleAnimation.value,
-            child: Container(
+            child: SizedBox(
               width: widget.size,
               height: widget.size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: widget.isPrimary
-                    ? LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          widget.colorScheme.primary,
-                          widget.colorScheme.secondary,
-                        ],
-                      )
-                    : null,
-                color: widget.isPrimary
-                    ? null
-                    : widget.colorScheme.surfaceVariant.withOpacity(0.8),
-                boxShadow: widget.isPrimary
-                    ? [
-                        BoxShadow(
-                          color:
-                              widget.colorScheme.primary.withOpacity(0.4),
-                          blurRadius: 12,
-                          spreadRadius: 1,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-              ),
-              child: Icon(
-                widget.icon,
-                size: widget.iconSize,
-                color: widget.isPrimary
-                    ? Colors.white
-                    : widget.colorScheme.onSurface,
+              child: Center(
+                child: Icon(
+                  widget.icon,
+                  size: widget.iconSize,
+                  color: widget.color,
+                ),
               ),
             ),
           );
